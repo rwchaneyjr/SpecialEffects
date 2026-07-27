@@ -145,15 +145,15 @@ public class MathPracticeMenu : MonoBehaviour
         var div = CreateToggle(root.transform, "Divide", new Vector2(0f, -120f), false);
 
         // Times table picker (1..12). You can select which tables to practice for Multiply/Divide.
-        var tableLabel = CreateLabel(root.transform, "Tables (Multiply/Divide)", new Vector2(0f, -145f), 24f, new Color(1f, 0.9f, 0.7f));
+        var tableLabel = CreateLabel(root.transform, "Tables (Multiply/Divide)", new Vector2(0f, -85f), 24f, new Color(1f, 0.9f, 0.7f));
         _ = tableLabel;
 
         var tableToggles = new Toggle[12];
         int cols = 6;
         float startX = -210f;
         float stepX = 70f;
-        float row1Y = -175f;
-        float row2Y = -215f;
+        float row1Y = -110f;
+        float row2Y = -140f;
         for (int i = 0; i < 12; i++)
         {
             int row = i / cols; // 0 or 1
@@ -166,7 +166,9 @@ public class MathPracticeMenu : MonoBehaviour
             tableToggles[i] = CreateMiniToggle(root.transform, tableNumber.ToString(), new Vector2(x, y), defaultOn);
         }
 
-        var start = CreateButton(root.transform, "Start Practice", new Vector2(0f, -255f));
+        Debug.Log($"MathPracticeMenu: created {tableToggles.Length} table toggles.");
+
+        var start = CreateButton(root.transform, "Start Practice", new Vector2(0f, -195f));
 
         // Keep title/hint references; title unused beyond creation.
         _ = title;
@@ -181,11 +183,11 @@ public class MathPracticeMenu : MonoBehaviour
         go.transform.SetParent(parent, false);
         var rt = go.GetComponent<RectTransform>();
         rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.sizeDelta = new Vector2(60f, 34f);
+        rt.sizeDelta = new Vector2(84f, 44f);
         rt.anchoredPosition = pos;
 
         var bg = go.GetComponent<Image>();
-        bg.color = new Color(0.22f, 0.18f, 0.20f, 0.95f);
+        bg.color = new Color(0.08f, 0.75f, 1f, 0.95f);
 
         // Use label as the graphic target so it’s visible even without separate checkmark sprites.
         var textGo = new GameObject("Label", typeof(RectTransform));
@@ -198,8 +200,8 @@ public class MathPracticeMenu : MonoBehaviour
 
         var tmp = textGo.AddComponent<TextMeshProUGUI>();
         tmp.text = label;
-        tmp.fontSize = 18f;
-        tmp.color = Color.white;
+        tmp.fontSize = 26f;
+        tmp.color = Color.black;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.enableWordWrapping = false;
         if (TMP_Settings.defaultFontAsset != null)
