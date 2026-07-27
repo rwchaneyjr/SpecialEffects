@@ -41,6 +41,14 @@ public static class MathGameBootstrap
         if (sceneVfx != null)
             sceneVfx.gameObject.SetActive(false);
 
+        // Push background Quad back so celebration orbs aren't hidden inside it.
+        var quad = GameObject.Find("Quad");
+        if (quad != null)
+        {
+            var p = quad.transform.position;
+            quad.transform.position = new Vector3(p.x, p.y, 2.5f);
+        }
+
         var gmGo = new GameObject("GameManager");
         var manager = gmGo.AddComponent<MathGameManager>();
         gmGo.AddComponent<AnswerSfx>();

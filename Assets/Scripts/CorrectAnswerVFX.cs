@@ -1,103 +1,138 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.VFX;
 
 /// <summary>
-/// Correct-answer effect: prefers Visual Effect Graph, falls back to a blue ParticleSystem
-/// (needed for many itch.io / WebGL builds where VFX Graph does not play).
+/// Correct-answer celebration. Always shows a blue growing mesh orb (build-safe for itch/WebGL).
+/// Also tries Visual Effect Graph when available.
 /// </summary>
 public class CorrectAnswerVFX : MonoBehaviour
 {
     const string SizeParam = "size";
     const string ColorParam = "New Color";
     const string ResourcesVfxName = "New VFX";
+    const string ResourcesMatName = "BlueOrb";
 
-    [Header("VFX")]
-    [SerializeField] VisualEffect visualEffect;
-    [SerializeField] VisualEffectAsset vfxAsset;
+    [SerializeField] float growDuration = 1.15f;
+    [SerializeField] float holdAfterGrow = 0.4f;
+    [SerializeField] float startScale = 0.35f;
+    [SerializeField] float endScale = 3.2f;
 
-    [Header("Growth & Glow")]
-    [SerializeField] float startSize = 1f;
-    [SerializeField] float endSize = 3.5f;
-    [SerializeField] float startGlow = 1f;
-    [SerializeField] float endGlow = 4f;
-    [SerializeField] float growDuration = 1.1f;
-    [SerializeField] float holdAfterGrow = 0.35f;
-
-    [Header("Fallback (Particle System)")]
-    [SerializeField] ParticleSystem fallbackParticles;
-    [SerializeField] bool forceParticleFallback;
-
-    Color _baseColor = new Color(0.27f, 0.70f, 3.7f, 0f);
-    bool _hasColorParam;
+    VisualEffect _vfx;
+    VisualEffectAsset _vfxAsset;
+    readonly List<Transform> _orbs = new List<Transform>();
+    readonly List<float> _orbBaseScales = new List<float>();
+    readonly List<Vector3> _orbDirs = new List<Vector3>();
+    Material _orbMat;
+    Color _baseEmission = new Color(0.2f, 1.2f, 3.5f, 1f);
     bool _hasSizeParam;
-    bool _usingParticles;
+    bool _hasColorParam;
+    Color _vfxBaseColor = new Color(0.27f, 0.70f, 3.7f, 0f);
 
-    void Awake()
-    {
-        if (visualEffect == null)
-            visualEffect = GetComponent<VisualEffect>();
-        if (fallbackParticles == null)
-            fallbackParticles = GetComponent<ParticleSystem>();
-    }
-
-    /// <summary>
-    /// Spawns a fresh active effect instance (safe for player builds).
-    /// </summary>
+    /// <summary>Spawns a guaranteed-visible blue burst at the answer position.</summary>
     public static CorrectAnswerVFX Spawn(Vector3 worldPosition, VisualEffectAsset asset, Transform numberToDestroy)
     {
+        // Pull slightly toward the camera so it isn't buried in a background Quad.
+        var cam = Camera.main;
+        if (cam != null)
+        {
+            Vector3 toCam = (cam.transform.position - worldPosition).normalized;
+            worldPosition += toCam * 0.75f;
+        }
+
         var go = new GameObject("CorrectAnswerEffect");
         go.transform.position = worldPosition;
 
-        var controller = go.AddComponent<CorrectAnswerVFX>();
-        controller.vfxAsset = asset != null ? asset : Resources.Load<VisualEffectAsset>(ResourcesVfxName);
+        var fx = go.AddComponent<CorrectAnswerVFX>();
+        fx._vfxAsset = asset != null ? asset : Resources.Load<VisualEffectAsset>(ResourcesVfxName);
+        fx.BuildMeshBurst();
+        fx.TryAttachVisualEffect();
+        fx.StartCoroutine(fx.PlayRoutine(numberToDestroy));
+        return fx;
+    }
 
-        bool preferParticles =
-            Application.platform == RuntimePlatform.WebGLPlayer ||
-            controller.vfxAsset == null;
+    void BuildMeshBurst()
+    {
+        _orbMat = CreateOrbMaterial();
 
-        if (!preferParticles)
+        // Core orb
+        AddOrb(Vector3.zero, 1f);
+
+        // Extra dots around the core (reads like particles, no ParticleSystem needed)
+        const int count = 18;
+        for (int i = 0; i < count; i++)
         {
-            var ve = go.AddComponent<VisualEffect>();
-            ve.visualEffectAsset = controller.vfxAsset;
-            controller.visualEffect = ve;
+            Vector3 dir = Random.onUnitSphere;
+            dir.z *= 0.35f; // flatter toward camera
+            AddOrb(dir.normalized * Random.Range(0.15f, 0.55f), Random.Range(0.18f, 0.38f));
         }
-
-        // Always build particles so we can fall back if VFX fails to start.
-        controller.fallbackParticles = BuildBlueOrbParticles(go);
-        controller.forceParticleFallback = preferParticles;
-        controller.PlayAt(worldPosition, numberToDestroy);
-        return controller;
     }
 
-    public void SetVfxAsset(VisualEffectAsset asset)
+    void AddOrb(Vector3 localPos, float localScale)
     {
-        vfxAsset = asset;
-        if (visualEffect != null && asset != null)
-            visualEffect.visualEffectAsset = asset;
+        var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        sphere.name = "Orb";
+        sphere.transform.SetParent(transform, false);
+        sphere.transform.localPosition = localPos;
+        sphere.transform.localScale = Vector3.one * localScale * startScale;
+
+        var col = sphere.GetComponent<Collider>();
+        if (col != null)
+            Destroy(col);
+
+        var rend = sphere.GetComponent<Renderer>();
+        if (rend != null && _orbMat != null)
+            rend.sharedMaterial = _orbMat;
+
+        _orbs.Add(sphere.transform);
+        _orbBaseScales.Add(localScale);
+        Vector3 dir = localPos.sqrMagnitude > 0.0001f ? localPos.normalized : Vector3.up;
+        _orbDirs.Add(dir);
     }
 
-    public void PlayAt(Vector3 worldPosition, Transform numberToDestroy)
+    void TryAttachVisualEffect()
     {
-        transform.position = worldPosition;
-        if (!gameObject.activeSelf)
-            gameObject.SetActive(true);
-        StartCoroutine(PlayRoutine(numberToDestroy));
+        // Skip VFX Graph on WebGL — often silent-fails in itch builds.
+        if (Application.platform == RuntimePlatform.WebGLPlayer)
+            return;
+        if (_vfxAsset == null)
+            return;
+
+        _vfx = gameObject.AddComponent<VisualEffect>();
+        _vfx.visualEffectAsset = _vfxAsset;
     }
 
     IEnumerator PlayRoutine(Transform numberToDestroy)
     {
-        // One frame so VisualEffect can initialize after activation / asset assign.
         yield return null;
 
-        PrepareEffect();
+        if (_vfx != null)
+        {
+            try
+            {
+                _vfx.Reinit();
+                _hasSizeParam = _vfx.HasFloat(SizeParam);
+                _hasColorParam = _vfx.HasVector4(ColorParam);
+                if (_hasColorParam)
+                    _vfxBaseColor = _vfx.GetVector4(ColorParam);
+                if (_hasSizeParam)
+                    _vfx.SetFloat(SizeParam, 1f);
+                _vfx.Play();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("VFX Graph skipped: " + e.Message);
+                _vfx = null;
+            }
+        }
 
         float elapsed = 0f;
         while (elapsed < growDuration)
         {
             elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / growDuration);
-            ApplyProgress(EaseOutQuad(t));
+            float t = EaseOutQuad(Mathf.Clamp01(elapsed / growDuration));
+            ApplyProgress(t);
             yield return null;
         }
 
@@ -110,208 +145,82 @@ public class CorrectAnswerVFX : MonoBehaviour
         Destroy(gameObject);
     }
 
-    void PrepareEffect()
-    {
-        if (fallbackParticles == null)
-            fallbackParticles = BuildBlueOrbParticles(gameObject);
-
-        bool tryVfx = !forceParticleFallback && Application.platform != RuntimePlatform.WebGLPlayer;
-        if (tryVfx)
-            tryVfx = TryStartVisualEffect();
-
-        _usingParticles = !tryVfx;
-        if (_usingParticles)
-            StartParticles();
-    }
-
-    bool TryStartVisualEffect()
-    {
-        if (visualEffect == null)
-            visualEffect = GetComponent<VisualEffect>();
-
-        if (vfxAsset == null)
-            vfxAsset = Resources.Load<VisualEffectAsset>(ResourcesVfxName);
-
-        if (visualEffect == null)
-        {
-            if (vfxAsset == null)
-                return false;
-            visualEffect = gameObject.AddComponent<VisualEffect>();
-        }
-
-        if (visualEffect.visualEffectAsset == null)
-        {
-            if (vfxAsset == null)
-                return false;
-            visualEffect.visualEffectAsset = vfxAsset;
-        }
-
-        try
-        {
-            visualEffect.enabled = true;
-            visualEffect.Reinit();
-
-            _hasSizeParam = visualEffect.HasFloat(SizeParam);
-            _hasColorParam = visualEffect.HasVector4(ColorParam);
-
-            if (_hasColorParam)
-                _baseColor = visualEffect.GetVector4(ColorParam);
-
-            if (_hasSizeParam)
-                visualEffect.SetFloat(SizeParam, startSize);
-            if (_hasColorParam)
-                visualEffect.SetVector4(ColorParam, ScaleHdr(_baseColor, startGlow));
-
-            visualEffect.Play();
-
-            // If the system still has no asset after Play, treat as failure.
-            if (visualEffect.visualEffectAsset == null)
-                return false;
-
-            return true;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning("Visual Effect failed in build; using particle fallback. " + e.Message);
-            return false;
-        }
-    }
-
-    void StartParticles()
-    {
-        if (fallbackParticles == null)
-            return;
-
-        if (visualEffect != null)
-            visualEffect.enabled = false;
-
-        var main = fallbackParticles.main;
-        main.startSizeMultiplier = startSize;
-        fallbackParticles.Play(true);
-    }
-
     void ApplyProgress(float t)
     {
-        float size = Mathf.Lerp(startSize, endSize, t);
-        float glow = Mathf.Lerp(startGlow, endGlow, t);
-
-        if (!_usingParticles && visualEffect != null && visualEffect.enabled)
+        float scale = Mathf.Lerp(startScale, endScale, t);
+        for (int i = 0; i < _orbs.Count; i++)
         {
-            if (_hasSizeParam)
-                visualEffect.SetFloat(SizeParam, size);
-            if (_hasColorParam)
-                visualEffect.SetVector4(ColorParam, ScaleHdr(_baseColor, glow));
+            if (_orbs[i] == null)
+                continue;
+
+            float baseMul = _orbBaseScales[i];
+            _orbs[i].localScale = Vector3.one * (scale * baseMul);
+
+            if (i > 0)
+                _orbs[i].localPosition = _orbDirs[i] * Mathf.Lerp(0.25f, 1.4f, t);
         }
 
-        if (fallbackParticles != null && (_usingParticles || forceParticleFallback))
+        if (_orbMat != null)
         {
-            var main = fallbackParticles.main;
-            main.startSize = new ParticleSystem.MinMaxCurve(size * 0.08f, size * 0.18f);
-
-            var shape = fallbackParticles.shape;
-            shape.radius = Mathf.Lerp(0.35f, 1.4f, t);
-        }
-    }
-
-    static Color ScaleHdr(Color c, float multiplier)
-    {
-        return new Color(c.r * multiplier, c.g * multiplier, c.b * multiplier, c.a);
-    }
-
-    static float EaseOutQuad(float x) => 1f - (1f - x) * (1f - x);
-
-    /// <summary>Blue glowing orb made with the built-in ParticleSystem (build-safe).</summary>
-    public static ParticleSystem BuildBlueOrbParticles(GameObject host)
-    {
-        var existing = host.GetComponent<ParticleSystem>();
-        if (existing != null)
-            return existing;
-
-        var ps = host.AddComponent<ParticleSystem>();
-        var main = ps.main;
-        main.loop = true;
-        main.playOnAwake = false;
-        main.duration = 2f;
-        main.startLifetime = 0.9f;
-        main.startSpeed = new ParticleSystem.MinMaxCurve(0.05f, 0.35f);
-        main.startSize = new ParticleSystem.MinMaxCurve(0.08f, 0.18f);
-        main.startColor = new Color(0.35f, 0.75f, 1f, 1f);
-        main.maxParticles = 250;
-        main.simulationSpace = ParticleSystemSimulationSpace.Local;
-        main.gravityModifier = 0f;
-
-        var emission = ps.emission;
-        emission.rateOverTime = 80f;
-
-        var shape = ps.shape;
-        shape.enabled = true;
-        shape.shapeType = ParticleSystemShapeType.Sphere;
-        shape.radius = 0.45f;
-
-        var colorOverLifetime = ps.colorOverLifetime;
-        colorOverLifetime.enabled = true;
-        var grad = new Gradient();
-        grad.SetKeys(
-            new[]
+            float glow = Mathf.Lerp(1f, 3.5f, t);
+            Color emission = _baseEmission * glow;
+            if (_orbMat.HasProperty("_EmissionColor"))
+                _orbMat.SetColor("_EmissionColor", emission);
+            if (_orbMat.HasProperty("_BaseColor"))
             {
-                new GradientColorKey(new Color(0.45f, 0.85f, 1f), 0f),
-                new GradientColorKey(new Color(0.2f, 0.45f, 1f), 1f)
-            },
-            new[]
-            {
-                new GradientAlphaKey(0f, 0f),
-                new GradientAlphaKey(1f, 0.15f),
-                new GradientAlphaKey(0.8f, 0.6f),
-                new GradientAlphaKey(0f, 1f)
-            });
-        colorOverLifetime.color = grad;
-
-        var sizeOverLifetime = ps.sizeOverLifetime;
-        sizeOverLifetime.enabled = true;
-        sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.6f, 1f, 1.4f));
-
-        var renderer = host.GetComponent<ParticleSystemRenderer>();
-        renderer.renderMode = ParticleSystemRenderMode.Billboard;
-
-        Material mat = Resources.Load<Material>("BlueOrbParticle");
-        if (mat == null)
-        {
-            string[] shaderNames =
-            {
-                "Universal Render Pipeline/Particles/Unlit",
-                "Particles/Standard Unlit",
-                "Particles/Unlit",
-                "Legacy Shaders/Particles/Additive",
-                "Mobile/Particles/Additive"
-            };
-            for (int i = 0; i < shaderNames.Length; i++)
-            {
-                var shader = Shader.Find(shaderNames[i]);
-                if (shader != null && shader.isSupported)
-                {
-                    mat = new Material(shader);
-                    var blue = new Color(0.4f, 0.85f, 1f, 1f);
-                    if (mat.HasProperty("_BaseColor"))
-                        mat.SetColor("_BaseColor", blue);
-                    if (mat.HasProperty("_Color"))
-                        mat.SetColor("_Color", blue);
-                    if (mat.HasProperty("_TintColor"))
-                        mat.SetColor("_TintColor", blue);
-                    break;
-                }
+                Color c = Color.Lerp(new Color(0.35f, 0.8f, 1f), new Color(0.55f, 0.95f, 1f), t);
+                _orbMat.SetColor("_BaseColor", c);
             }
         }
 
-        if (mat == null)
+        if (_vfx != null)
         {
-            var builtin = Resources.GetBuiltinResource<Material>("Default-Particle.mat");
-            if (builtin != null)
-                mat = new Material(builtin);
+            if (_hasSizeParam)
+                _vfx.SetFloat(SizeParam, Mathf.Lerp(1f, 3.5f, t));
+            if (_hasColorParam)
+            {
+                _vfx.SetVector4(ColorParam, new Color(
+                    _vfxBaseColor.r * Mathf.Lerp(1f, 4f, t),
+                    _vfxBaseColor.g * Mathf.Lerp(1f, 4f, t),
+                    _vfxBaseColor.b * Mathf.Lerp(1f, 4f, t),
+                    _vfxBaseColor.a));
+            }
+        }
+    }
+
+    static Material CreateOrbMaterial()
+    {
+        var fromResources = Resources.Load<Material>(ResourcesMatName);
+        Material mat;
+        if (fromResources != null)
+            mat = new Material(fromResources);
+        else
+        {
+            // Same URP Lit shader used by this project (always in builds).
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+            if (shader == null)
+                shader = Shader.Find("URP/Lit");
+            if (shader == null)
+                shader = Shader.Find("Standard");
+            if (shader == null)
+                shader = Shader.Find("Sprites/Default");
+            mat = shader != null ? new Material(shader) : new Material(Shader.Find("Hidden/InternalErrorShader"));
         }
 
-        if (mat != null)
-            renderer.material = mat;
+        Color blue = new Color(0.35f, 0.85f, 1f, 1f);
+        if (mat.HasProperty("_BaseColor"))
+            mat.SetColor("_BaseColor", blue);
+        if (mat.HasProperty("_Color"))
+            mat.SetColor("_Color", blue);
 
-        return ps;
+        // Emission = glow
+        mat.EnableKeyword("_EMISSION");
+        if (mat.HasProperty("_EmissionColor"))
+            mat.SetColor("_EmissionColor", new Color(0.2f, 1.2f, 3.5f));
+        mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+
+        return mat;
     }
+
+    static float EaseOutQuad(float x) => 1f - (1f - x) * (1f - x);
 }

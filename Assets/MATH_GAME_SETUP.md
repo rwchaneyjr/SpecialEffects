@@ -19,12 +19,12 @@ Sounds: a soft chime for correct answers, a short low tone for wrong answers (bu
 
 ## Itch.io / builds — visual effect
 
-`New VFX` lives in `Assets/Resources/New VFX.vfx` so it is included in player builds.
+Correct answers always show a **blue glowing mesh orb burst** (URP Lit spheres). This works in WebGL and Windows itch builds.
 
-- **Windows / Mac / Linux builds:** Visual Effect Graph is used when supported.
-- **WebGL (common on itch.io):** VFX Graph often does not play; the game automatically uses a blue ParticleSystem orb instead so you still get a glow that grows on correct answers.
+- `Assets/Resources/BlueOrb.mat` — material included in builds
+- `Assets/Resources/New VFX.vfx` — also tried on desktop; skipped on WebGL
 
-Rebuild the itch.io upload after pulling this fix.
+Rebuild and re-upload to itch after pulling.
 
 ## What was added
 
