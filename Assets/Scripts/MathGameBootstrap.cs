@@ -60,6 +60,14 @@ public static class MathGameBootstrap
 
     static void EnsureMenuFor(MathGameManager manager)
     {
+        var quad = GameObject.Find("Quad");
+        if (quad != null)
+        {
+            var p = quad.transform.position;
+            if (p.z < 1.5f)
+                quad.transform.position = new Vector3(p.x, p.y, 2.5f);
+        }
+
         if (Object.FindObjectOfType<MathPracticeMenu>() != null)
             return;
 
