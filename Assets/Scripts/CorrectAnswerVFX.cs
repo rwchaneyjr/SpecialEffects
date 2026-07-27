@@ -46,10 +46,6 @@ public class CorrectAnswerVFX : MonoBehaviour
     Vector3 _camBasePos;
     bool _shaking;
 
-    // Optional VFX Graph attempt on desktop only.
-    VisualEffect _vfx;
-    VisualEffectAsset _vfxAsset;
-
     public static CorrectAnswerVFX Spawn(Vector3 worldPosition, VisualEffectAsset asset, Transform numberToDestroy)
     {
         // UI flash is WebGL-safe and ensures we always see feedback on itch.io.
@@ -66,9 +62,7 @@ public class CorrectAnswerVFX : MonoBehaviour
         go.transform.position = worldPosition;
 
         var fx = go.AddComponent<CorrectAnswerVFX>();
-        fx._vfxAsset = asset != null ? asset : Resources.Load<VisualEffectAsset>(ResourcesVfxName);
         fx.BuildMeshPop();
-        fx.TryAttachVfxGraph();
         fx.StartCoroutine(fx.PlayRoutine(numberToDestroy));
         return fx;
     }
@@ -172,33 +166,9 @@ public class CorrectAnswerVFX : MonoBehaviour
         }
     }
 
-    void TryAttachVfxGraph()
-    {
-        if (Application.platform == RuntimePlatform.WebGLPlayer)
-            return;
-        if (_vfxAsset == null)
-            return;
-
-        _vfx = gameObject.AddComponent<VisualEffect>();
-        _vfx.visualEffectAsset = _vfxAsset;
-    }
-
     IEnumerator PlayRoutine(Transform numberToDestroy)
     {
         yield return null;
-
-        if (_vfx != null)
-        {
-            try
-            {
-                _vfx.Reinit();
-                _vfx.Play();
-            }
-            catch
-            {
-                _vfx = null;
-            }
-        }
 
         var cam = Camera.main;
         if (cam != null && cameraShake > 0f)
