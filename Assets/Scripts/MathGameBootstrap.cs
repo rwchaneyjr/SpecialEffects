@@ -16,6 +16,7 @@ public static class MathGameBootstrap
         var existingManager = Object.FindObjectOfType<MathGameManager>();
         if (existingManager != null)
         {
+            DisableAllSceneVfx();
             EnsureMenuFor(existingManager);
             EnsureVfxAsset(existingManager);
             return;
@@ -25,6 +26,8 @@ public static class MathGameBootstrap
 
         EnsureCamera();
         EnsureEventSystem();
+
+        DisableAllSceneVfx();
 
         // In the demo scene, a background Quad can cover world-space VFX in builds.
         // Push it forward so the celebration is always visible.
@@ -45,11 +48,6 @@ public static class MathGameBootstrap
 
         VisualEffectAsset vfxAsset = ResolveVfxAsset();
 
-        // Keep scene demo VFX from covering gameplay; asset stays available via Resources.
-        var sceneVfx = Object.FindObjectOfType<VisualEffect>();
-        if (sceneVfx != null)
-            sceneVfx.gameObject.SetActive(false);
-
         // Push background Quad back so celebration orbs aren't hidden inside it.
         var quad = GameObject.Find("Quad");
         if (quad != null)
@@ -69,6 +67,8 @@ public static class MathGameBootstrap
 
     static void EnsureMenuFor(MathGameManager manager)
     {
+        DisableAllSceneVfx();
+
         var quad = GameObject.Find("Quad");
         if (quad != null)
         {
@@ -95,6 +95,20 @@ public static class MathGameBootstrap
     {
         // Manager already configured in scene; still make sure Resources asset is resolvable.
         ResolveVfxAsset();
+    }
+
+    static void DisableAllSceneVfx()
+    {
+        // Some scenes contain a demo VisualEffect Graph object that keeps running in builds.
+        // Disable ALL of them so you only see the math-game effects.
+        var effects = Object.FindObjectsOfType<VisualEffect>(true);
+        for (int i = 0; i < effects.Length; i++)
+        {
+            if (effects[i] == null)
+                continue;
+            if (effects[i].gameObject != null)
+                effects[i].gameObject.SetActive(false);
+        }
     }
 
     static VisualEffectAsset ResolveVfxAsset()
