@@ -10,7 +10,7 @@ using TMPro;
 
 /// <summary>
 /// One-click scene wiring for the math clicker game.
-/// Menu: Tools → Math Game → Setup Scene
+/// Menu: Window → Math Game → Setup Scene
 /// </summary>
 public static class MathGameSceneSetup
 {
