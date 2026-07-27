@@ -26,6 +26,15 @@ public static class MathGameBootstrap
         EnsureCamera();
         EnsureEventSystem();
 
+        // In the demo scene, a background Quad can cover world-space VFX in builds.
+        // Push it forward so the celebration is always visible.
+        var quad = GameObject.Find("Quad");
+        if (quad != null)
+        {
+            var p = quad.transform.position;
+            quad.transform.position = new Vector3(p.x, p.y, 2.5f);
+        }
+
         Canvas canvas = CreateUi(out TextMeshProUGUI equationText, out TextMeshProUGUI feedbackText);
 
         var spawnGo = new GameObject("SpawnArea");
