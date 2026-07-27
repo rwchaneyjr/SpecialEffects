@@ -160,7 +160,10 @@ public class MathPracticeMenu : MonoBehaviour
             int col = i % cols;
             float x = startX + col * stepX;
             float y = row == 0 ? row1Y : row2Y;
-            tableToggles[i] = CreateMiniToggle(root.transform, (i + 1).ToString(), new Vector2(x, y), true);
+            int tableNumber = i + 1;
+            // Default selection: practice tables 2..12 (leave 1 off). User can change.
+            bool defaultOn = tableNumber != 1;
+            tableToggles[i] = CreateMiniToggle(root.transform, tableNumber.ToString(), new Vector2(x, y), defaultOn);
         }
 
         var start = CreateButton(root.transform, "Start Practice", new Vector2(0f, -310f));
