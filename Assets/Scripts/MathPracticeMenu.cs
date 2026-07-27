@@ -14,12 +14,22 @@ public class MathPracticeMenu : MonoBehaviour
     [SerializeField] Toggle subtractionToggle;
     [SerializeField] Toggle multiplyToggle;
     [SerializeField] Toggle divideToggle;
+    Toggle[] _timesTableToggles = new Toggle[12]; // 1..12
     [SerializeField] Button startButton;
     [SerializeField] TextMeshProUGUI hintText;
 
     public bool IsOpen => menuRoot != null && menuRoot.activeSelf;
 
-    public void Configure(MathGameManager manager, GameObject root, Toggle add, Toggle sub, Toggle mul, Toggle div, Button start, TextMeshProUGUI hint)
+    public void Configure(
+        MathGameManager manager,
+        GameObject root,
+        Toggle add,
+        Toggle sub,
+        Toggle mul,
+        Toggle div,
+        Toggle[] tableToggles,
+        Button start,
+        TextMeshProUGUI hint)
     {
         gameManager = manager;
         menuRoot = root;
@@ -27,6 +37,8 @@ public class MathPracticeMenu : MonoBehaviour
         subtractionToggle = sub;
         multiplyToggle = mul;
         divideToggle = div;
+        if (tableToggles != null && tableToggles.Length == 12)
+            _timesTableToggles = tableToggles;
         startButton = start;
         hintText = hint;
         WireButtons();
@@ -77,12 +89,14 @@ public class MathPracticeMenu : MonoBehaviour
             return;
         }
 
+        var tables = BuildSelectedTables();
+
         if (hintText != null)
             hintText.text = "Esc = pause / change practice";
 
         CloseMenu();
         if (gameManager != null)
-            gameManager.BeginPractice(ops);
+            gameManager.BeginPractice(ops, tables);
     }
 
     System.Collections.Generic.List<MathOp> BuildSelectedOps()
@@ -98,6 +112,18 @@ public class MathPracticeMenu : MonoBehaviour
             ops.Add(MathOp.Add);
 
         return ops;
+    }
+
+    System.Collections.Generic.List<int> BuildSelectedTables()
+    {
+        var list = new System.Collections.Generic.List<int>();
+        for (int i = 0; i < _timesTableToggles.Length; i++)
+        {
+            var t = _timesTableToggles[i];
+            if (t != null && t.isOn)
+                list.Add(i + 1); // 1..12
+        }
+        return list;
     }
 
     /// <summary>
@@ -117,13 +143,69 @@ public class MathPracticeMenu : MonoBehaviour
         var sub = CreateToggle(root.transform, "Subtraction", new Vector2(0f, 20f), false);
         var mul = CreateToggle(root.transform, "Times Tables", new Vector2(0f, -50f), false);
         var div = CreateToggle(root.transform, "Divide", new Vector2(0f, -120f), false);
-        var start = CreateButton(root.transform, "Start Practice", new Vector2(0f, -230f));
+
+        // Times table picker (1..12). You can select which tables to practice for Multiply/Divide.
+        var tableLabel = CreateLabel(root.transform, "Tables (Multiply/Divide)", new Vector2(0f, -175f), 24f, new Color(1f, 0.9f, 0.7f));
+        _ = tableLabel;
+
+        var tableToggles = new Toggle[12];
+        int cols = 6;
+        float startX = -210f;
+        float stepX = 70f;
+        float row1Y = -205f;
+        float row2Y = -245f;
+        for (int i = 0; i < 12; i++)
+        {
+            int row = i / cols; // 0 or 1
+            int col = i % cols;
+            float x = startX + col * stepX;
+            float y = row == 0 ? row1Y : row2Y;
+            tableToggles[i] = CreateMiniToggle(root.transform, (i + 1).ToString(), new Vector2(x, y), true);
+        }
+
+        var start = CreateButton(root.transform, "Start Practice", new Vector2(0f, -310f));
 
         // Keep title/hint references; title unused beyond creation.
         _ = title;
 
-        menu.Configure(manager, root, add, sub, mul, div, start, hint);
+        menu.Configure(manager, root, add, sub, mul, div, tableToggles, start, hint);
         return menu;
+    }
+
+    static Toggle CreateMiniToggle(Transform parent, string label, Vector2 pos, bool on)
+    {
+        var go = new GameObject(label + "MiniToggle", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Toggle));
+        go.transform.SetParent(parent, false);
+        var rt = go.GetComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(60f, 34f);
+        rt.anchoredPosition = pos;
+
+        var bg = go.GetComponent<Image>();
+        bg.color = new Color(0.18f, 0.14f, 0.16f, 1f);
+
+        // Use label as the graphic target so it’s visible even without separate checkmark sprites.
+        var textGo = new GameObject("Label", typeof(RectTransform));
+        textGo.transform.SetParent(go.transform, false);
+        var trt = textGo.GetComponent<RectTransform>();
+        trt.anchorMin = Vector2.zero;
+        trt.anchorMax = Vector2.one;
+        trt.offsetMin = Vector2.zero;
+        trt.offsetMax = Vector2.zero;
+
+        var tmp = textGo.AddComponent<TextMeshProUGUI>();
+        tmp.text = label;
+        tmp.fontSize = 18f;
+        tmp.color = Color.white;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.enableWordWrapping = false;
+        if (TMP_Settings.defaultFontAsset != null)
+            tmp.font = TMP_Settings.defaultFontAsset;
+
+        var toggle = go.GetComponent<Toggle>();
+        toggle.targetGraphic = bg;
+        toggle.graphic = bg;
+        toggle.isOn = on;
+        return toggle;
     }
 
     static GameObject CreatePanel(Transform parent, string name)

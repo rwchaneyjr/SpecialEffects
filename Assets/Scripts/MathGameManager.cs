@@ -44,6 +44,7 @@ public class MathGameManager : MonoBehaviour
 
     readonly List<AnswerChoice> _activeAnswers = new List<AnswerChoice>();
     readonly List<MathOp> _enabledOps = new List<MathOp> { MathOp.Add };
+    readonly List<int> _allowedTables = new List<int>();
     int _correctValue;
     bool _roundLocked;
     bool _isPlaying;
@@ -96,7 +97,7 @@ public class MathGameManager : MonoBehaviour
             PauseToMenu();
     }
 
-    public void BeginPractice(List<MathOp> ops)
+    public void BeginPractice(List<MathOp> ops, List<int> allowedTables)
     {
         _enabledOps.Clear();
         if (ops != null)
@@ -110,6 +111,24 @@ public class MathGameManager : MonoBehaviour
 
         if (_enabledOps.Count == 0)
             _enabledOps.Add(MathOp.Add);
+
+        _allowedTables.Clear();
+        if (allowedTables != null && allowedTables.Count > 0)
+        {
+            for (int i = 0; i < allowedTables.Count; i++)
+            {
+                int v = allowedTables[i];
+                if (v >= 1 && v <= timesTableMax && !_allowedTables.Contains(v))
+                    _allowedTables.Add(v);
+            }
+        }
+
+        // If nothing picked, allow all.
+        if (_allowedTables.Count == 0)
+        {
+            for (int v = 1; v <= timesTableMax; v++)
+                _allowedTables.Add(v);
+        }
 
         _isPlaying = true;
         if (feedbackText != null)
@@ -284,15 +303,15 @@ public class MathGameManager : MonoBehaviour
                 break;
 
             case MathOp.Multiply:
-                a = Random.Range(1, timesTableMax + 1);
-                b = Random.Range(1, timesTableMax + 1);
+                a = _allowedTables[Random.Range(0, _allowedTables.Count)];
+                b = _allowedTables[Random.Range(0, _allowedTables.Count)];
                 opSymbol = "×";
                 result = a * b;
                 break;
 
             case MathOp.Divide:
                 // Build whole-number division: a ÷ b = result
-                b = Random.Range(1, timesTableMax + 1);
+                b = _allowedTables[Random.Range(0, _allowedTables.Count)];
                 result = Random.Range(1, timesTableMax + 1);
                 a = b * result;
                 opSymbol = "÷";
