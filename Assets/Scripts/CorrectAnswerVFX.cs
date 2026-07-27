@@ -4,8 +4,8 @@ using UnityEngine;
 using UnityEngine.VFX;
 
 /// <summary>
-/// Correct-answer celebration. Always shows a blue growing mesh orb (build-safe for itch/WebGL).
-/// Also tries Visual Effect Graph when available.
+/// Dramatic correct-answer explosion that works on itch.io / WebGL.
+/// Uses bright URP Lit mesh shards (no ParticleSystem / VFX Graph required).
 /// </summary>
 public class CorrectAnswerVFX : MonoBehaviour
 {
@@ -14,86 +14,129 @@ public class CorrectAnswerVFX : MonoBehaviour
     const string ResourcesVfxName = "New VFX";
     const string ResourcesMatName = "BlueOrb";
 
-    [SerializeField] float growDuration = 1.15f;
-    [SerializeField] float holdAfterGrow = 0.4f;
-    [SerializeField] float startScale = 0.35f;
-    [SerializeField] float endScale = 3.2f;
+    [Header("Explosion timing")]
+    [SerializeField] float explodeDuration = 1.35f;
+    [SerializeField] float holdAfter = 0.25f;
+    [SerializeField] float destroyNumberAt = 0.2f;
+
+    [Header("Explosion size")]
+    [SerializeField] float coreStart = 0.4f;
+    [SerializeField] float corePeak = 5.5f;
+    [SerializeField] float shardTravel = 5.5f;
+    [SerializeField] int shardCount = 55;
+    [SerializeField] float cameraShake = 0.28f;
 
     VisualEffect _vfx;
     VisualEffectAsset _vfxAsset;
-    readonly List<Transform> _orbs = new List<Transform>();
-    readonly List<float> _orbBaseScales = new List<float>();
-    readonly List<Vector3> _orbDirs = new List<Vector3>();
-    Material _orbMat;
-    Color _baseEmission = new Color(0.2f, 1.2f, 3.5f, 1f);
+
+    Transform _core;
+    Transform _shockwave;
+    readonly List<Transform> _shards = new List<Transform>();
+    readonly List<Vector3> _shardDirs = new List<Vector3>();
+    readonly List<float> _shardSizes = new List<float>();
+    readonly List<float> _shardSpeeds = new List<float>();
+
+    Material _hotMat;
+    Material _coreMat;
+    Color _hotEmission = new Color(0.4f, 2.2f, 6.5f, 1f);
+    Vector3 _camBasePos;
+    bool _shaking;
+
     bool _hasSizeParam;
     bool _hasColorParam;
     Color _vfxBaseColor = new Color(0.27f, 0.70f, 3.7f, 0f);
 
-    /// <summary>Spawns a guaranteed-visible blue burst at the answer position.</summary>
     public static CorrectAnswerVFX Spawn(Vector3 worldPosition, VisualEffectAsset asset, Transform numberToDestroy)
     {
-        // Pull slightly toward the camera so it isn't buried in a background Quad.
         var cam = Camera.main;
         if (cam != null)
         {
             Vector3 toCam = (cam.transform.position - worldPosition).normalized;
-            worldPosition += toCam * 0.75f;
+            worldPosition += toCam * 1.0f;
         }
 
-        var go = new GameObject("CorrectAnswerEffect");
+        var go = new GameObject("CorrectAnswerExplosion");
         go.transform.position = worldPosition;
 
         var fx = go.AddComponent<CorrectAnswerVFX>();
         fx._vfxAsset = asset != null ? asset : Resources.Load<VisualEffectAsset>(ResourcesVfxName);
-        fx.BuildMeshBurst();
+        fx.BuildExplosion();
         fx.TryAttachVisualEffect();
         fx.StartCoroutine(fx.PlayRoutine(numberToDestroy));
         return fx;
     }
 
-    void BuildMeshBurst()
+    void BuildExplosion()
     {
-        _orbMat = CreateOrbMaterial();
+        _hotMat = CreateMaterial(new Color(0.45f, 0.95f, 1f), _hotEmission);
+        _coreMat = CreateMaterial(new Color(0.75f, 0.98f, 1f), _hotEmission * 1.6f);
 
-        // Core orb
-        AddOrb(Vector3.zero, 1f);
+        // Blinding core flash
+        _core = MakeSphere("Core", Vector3.zero, coreStart, _coreMat);
 
-        // Extra dots around the core (reads like particles, no ParticleSystem needed)
-        const int count = 18;
-        for (int i = 0; i < count; i++)
+        // Shockwave ring (flat disc of spheres)
+        var wave = new GameObject("Shockwave");
+        wave.transform.SetParent(transform, false);
+        _shockwave = wave.transform;
+        for (int i = 0; i < 16; i++)
+        {
+            float ang = i / 16f * Mathf.PI * 2f;
+            Vector3 p = new Vector3(Mathf.Cos(ang), Mathf.Sin(ang), 0f) * 0.35f;
+            var piece = MakeSphere("Wave", p, 0.22f, _hotMat);
+            piece.SetParent(_shockwave, false);
+        }
+
+        // Flying shards
+        for (int i = 0; i < shardCount; i++)
         {
             Vector3 dir = Random.onUnitSphere;
-            dir.z *= 0.35f; // flatter toward camera
-            AddOrb(dir.normalized * Random.Range(0.15f, 0.55f), Random.Range(0.18f, 0.38f));
+            dir.z *= 0.45f;
+            dir.Normalize();
+
+            float size = Random.Range(0.12f, 0.55f);
+            var shard = MakeSphere("Shard", dir * Random.Range(0.05f, 0.25f), size, _hotMat);
+            _shards.Add(shard);
+            _shardDirs.Add(dir);
+            _shardSizes.Add(size);
+            _shardSpeeds.Add(Random.Range(0.75f, 1.35f));
+        }
+
+        // Extra big chunks for drama
+        for (int i = 0; i < 8; i++)
+        {
+            Vector3 dir = Random.onUnitSphere;
+            dir.z *= 0.3f;
+            dir.Normalize();
+            float size = Random.Range(0.45f, 0.85f);
+            var chunk = MakeSphere("Chunk", dir * 0.1f, size, _coreMat);
+            _shards.Add(chunk);
+            _shardDirs.Add(dir);
+            _shardSizes.Add(size);
+            _shardSpeeds.Add(Random.Range(0.55f, 0.9f));
         }
     }
 
-    void AddOrb(Vector3 localPos, float localScale)
+    Transform MakeSphere(string name, Vector3 localPos, float scale, Material mat)
     {
         var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        sphere.name = "Orb";
+        sphere.name = name;
         sphere.transform.SetParent(transform, false);
         sphere.transform.localPosition = localPos;
-        sphere.transform.localScale = Vector3.one * localScale * startScale;
+        sphere.transform.localScale = Vector3.one * scale;
 
         var col = sphere.GetComponent<Collider>();
         if (col != null)
             Destroy(col);
 
         var rend = sphere.GetComponent<Renderer>();
-        if (rend != null && _orbMat != null)
-            rend.sharedMaterial = _orbMat;
+        if (rend != null && mat != null)
+            rend.sharedMaterial = mat;
 
-        _orbs.Add(sphere.transform);
-        _orbBaseScales.Add(localScale);
-        Vector3 dir = localPos.sqrMagnitude > 0.0001f ? localPos.normalized : Vector3.up;
-        _orbDirs.Add(dir);
+        return sphere.transform;
     }
 
     void TryAttachVisualEffect()
     {
-        // Skip VFX Graph on WebGL — often silent-fails in itch builds.
         if (Application.platform == RuntimePlatform.WebGLPlayer)
             return;
         if (_vfxAsset == null)
@@ -117,7 +160,7 @@ public class CorrectAnswerVFX : MonoBehaviour
                 if (_hasColorParam)
                     _vfxBaseColor = _vfx.GetVector4(ColorParam);
                 if (_hasSizeParam)
-                    _vfx.SetFloat(SizeParam, 1f);
+                    _vfx.SetFloat(SizeParam, 1.5f);
                 _vfx.Play();
             }
             catch (System.Exception e)
@@ -127,68 +170,131 @@ public class CorrectAnswerVFX : MonoBehaviour
             }
         }
 
+        var cam = Camera.main;
+        if (cam != null && cameraShake > 0f)
+        {
+            _camBasePos = cam.transform.localPosition;
+            _shaking = true;
+        }
+
+        bool numberGone = false;
         float elapsed = 0f;
-        while (elapsed < growDuration)
+        while (elapsed < explodeDuration)
         {
             elapsed += Time.deltaTime;
-            float t = EaseOutQuad(Mathf.Clamp01(elapsed / growDuration));
-            ApplyProgress(t);
+            float t = Mathf.Clamp01(elapsed / explodeDuration);
+            // Punchy start, lingering end
+            float eased = 1f - Mathf.Pow(1f - t, 3.5f);
+            ApplyExplosion(eased, t);
+
+            if (!numberGone && elapsed >= destroyNumberAt && numberToDestroy != null)
+            {
+                Destroy(numberToDestroy.gameObject);
+                numberGone = true;
+            }
+
+            if (_shaking && cam != null)
+            {
+                float shakeAmt = cameraShake * (1f - t) * (1f - t);
+                cam.transform.localPosition = _camBasePos + Random.insideUnitSphere * shakeAmt;
+            }
+
             yield return null;
         }
 
-        ApplyProgress(1f);
-        yield return new WaitForSeconds(holdAfterGrow);
+        ApplyExplosion(1f, 1f);
 
-        if (numberToDestroy != null)
+        if (_shaking && cam != null)
+            cam.transform.localPosition = _camBasePos;
+        _shaking = false;
+
+        if (!numberGone && numberToDestroy != null)
             Destroy(numberToDestroy.gameObject);
 
+        yield return new WaitForSeconds(holdAfter);
         Destroy(gameObject);
     }
 
-    void ApplyProgress(float t)
+    void ApplyExplosion(float eased, float linearT)
     {
-        float scale = Mathf.Lerp(startScale, endScale, t);
-        for (int i = 0; i < _orbs.Count; i++)
+        // Core: explode big, then shrink away
+        if (_core != null)
         {
-            if (_orbs[i] == null)
-                continue;
-
-            float baseMul = _orbBaseScales[i];
-            _orbs[i].localScale = Vector3.one * (scale * baseMul);
-
-            if (i > 0)
-                _orbs[i].localPosition = _orbDirs[i] * Mathf.Lerp(0.25f, 1.4f, t);
+            float coreScale;
+            if (eased < 0.35f)
+                coreScale = Mathf.Lerp(coreStart, corePeak, EaseOutBack(Mathf.InverseLerp(0f, 0.35f, eased)));
+            else
+                coreScale = Mathf.Lerp(corePeak, 0.05f, Mathf.InverseLerp(0.35f, 1f, eased));
+            _core.localScale = Vector3.one * coreScale;
         }
 
-        if (_orbMat != null)
+        // Shockwave expands fast and thins
+        if (_shockwave != null)
         {
-            float glow = Mathf.Lerp(1f, 3.5f, t);
-            Color emission = _baseEmission * glow;
-            if (_orbMat.HasProperty("_EmissionColor"))
-                _orbMat.SetColor("_EmissionColor", emission);
-            if (_orbMat.HasProperty("_BaseColor"))
+            float wave = Mathf.Lerp(0.4f, shardTravel * 1.15f, eased);
+            _shockwave.localScale = new Vector3(wave, wave, wave * 0.25f);
+            for (int i = 0; i < _shockwave.childCount; i++)
             {
-                Color c = Color.Lerp(new Color(0.35f, 0.8f, 1f), new Color(0.55f, 0.95f, 1f), t);
-                _orbMat.SetColor("_BaseColor", c);
+                var c = _shockwave.GetChild(i);
+                float s = Mathf.Lerp(0.35f, 0.05f, eased);
+                c.localScale = Vector3.one * s;
             }
         }
+
+        // Shards fly outward and shrink
+        for (int i = 0; i < _shards.Count; i++)
+        {
+            if (_shards[i] == null)
+                continue;
+
+            float dist = shardTravel * _shardSpeeds[i] * eased;
+            _shards[i].localPosition = _shardDirs[i] * dist;
+
+            float sizeMul = Mathf.Lerp(1.15f, 0.05f, eased);
+            // Pop larger at the start
+            if (linearT < 0.15f)
+                sizeMul = Mathf.Lerp(0.6f, 1.35f, linearT / 0.15f);
+
+            _shards[i].localScale = Vector3.one * (_shardSizes[i] * sizeMul);
+        }
+
+        // Super hot flash then cool
+        float glow = linearT < 0.2f
+            ? Mathf.Lerp(2f, 8f, linearT / 0.2f)
+            : Mathf.Lerp(8f, 0.4f, (linearT - 0.2f) / 0.8f);
+
+        SetGlow(_hotMat, _hotEmission * glow, Color.Lerp(new Color(0.5f, 0.95f, 1f), new Color(0.2f, 0.55f, 1f), linearT));
+        SetGlow(_coreMat, _hotEmission * (glow * 1.4f), Color.Lerp(Color.white, new Color(0.4f, 0.9f, 1f), linearT));
 
         if (_vfx != null)
         {
             if (_hasSizeParam)
-                _vfx.SetFloat(SizeParam, Mathf.Lerp(1f, 3.5f, t));
+                _vfx.SetFloat(SizeParam, Mathf.Lerp(1.5f, 5f, eased));
             if (_hasColorParam)
             {
+                float g = Mathf.Lerp(2f, 6f, glow / 8f);
                 _vfx.SetVector4(ColorParam, new Color(
-                    _vfxBaseColor.r * Mathf.Lerp(1f, 4f, t),
-                    _vfxBaseColor.g * Mathf.Lerp(1f, 4f, t),
-                    _vfxBaseColor.b * Mathf.Lerp(1f, 4f, t),
+                    _vfxBaseColor.r * g,
+                    _vfxBaseColor.g * g,
+                    _vfxBaseColor.b * g,
                     _vfxBaseColor.a));
             }
         }
     }
 
-    static Material CreateOrbMaterial()
+    static void SetGlow(Material mat, Color emission, Color baseColor)
+    {
+        if (mat == null)
+            return;
+        if (mat.HasProperty("_EmissionColor"))
+            mat.SetColor("_EmissionColor", emission);
+        if (mat.HasProperty("_BaseColor"))
+            mat.SetColor("_BaseColor", baseColor);
+        if (mat.HasProperty("_Color"))
+            mat.SetColor("_Color", baseColor);
+    }
+
+    static Material CreateMaterial(Color baseColor, Color emission)
     {
         var fromResources = Resources.Load<Material>(ResourcesMatName);
         Material mat;
@@ -196,31 +302,30 @@ public class CorrectAnswerVFX : MonoBehaviour
             mat = new Material(fromResources);
         else
         {
-            // Same URP Lit shader used by this project (always in builds).
             Shader shader = Shader.Find("Universal Render Pipeline/Lit");
-            if (shader == null)
-                shader = Shader.Find("URP/Lit");
             if (shader == null)
                 shader = Shader.Find("Standard");
             if (shader == null)
                 shader = Shader.Find("Sprites/Default");
-            mat = shader != null ? new Material(shader) : new Material(Shader.Find("Hidden/InternalErrorShader"));
+            mat = new Material(shader);
         }
 
-        Color blue = new Color(0.35f, 0.85f, 1f, 1f);
         if (mat.HasProperty("_BaseColor"))
-            mat.SetColor("_BaseColor", blue);
+            mat.SetColor("_BaseColor", baseColor);
         if (mat.HasProperty("_Color"))
-            mat.SetColor("_Color", blue);
+            mat.SetColor("_Color", baseColor);
 
-        // Emission = glow
         mat.EnableKeyword("_EMISSION");
         if (mat.HasProperty("_EmissionColor"))
-            mat.SetColor("_EmissionColor", new Color(0.2f, 1.2f, 3.5f));
+            mat.SetColor("_EmissionColor", emission);
         mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
-
         return mat;
     }
 
-    static float EaseOutQuad(float x) => 1f - (1f - x) * (1f - x);
+    static float EaseOutBack(float x)
+    {
+        const float c1 = 1.70158f;
+        const float c3 = c1 + 1f;
+        return 1f + c3 * Mathf.Pow(x - 1f, 3f) + c1 * Mathf.Pow(x - 1f, 2f);
+    }
 }
