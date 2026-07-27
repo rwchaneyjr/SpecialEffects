@@ -44,6 +44,25 @@ public class MathGameManager : MonoBehaviour
     bool _roundLocked;
     Coroutine _feedbackRoutine;
 
+    /// <summary>
+    /// Used by MathGameBootstrap / editor setup to wire references at runtime.
+    /// </summary>
+    public void Configure(
+        TextMeshProUGUI equation,
+        TextMeshProUGUI feedback,
+        NumberVisualBuilder builder,
+        Transform spawn,
+        CorrectAnswerVFX vfxPrefab,
+        VisualEffectAsset vfxAsset)
+    {
+        equationText = equation;
+        feedbackText = feedback;
+        numberBuilder = builder;
+        spawnArea = spawn;
+        correctVfxPrefab = vfxPrefab;
+        correctVfxAsset = vfxAsset;
+    }
+
     void Start()
     {
         if (feedbackText != null)
