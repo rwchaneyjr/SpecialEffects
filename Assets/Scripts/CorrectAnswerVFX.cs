@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.VFX;
+using UnityEngine.UI;
 
 /// <summary>
 /// Candy-crush-like goo pop (mesh-only, WebGL-safe).
@@ -51,6 +52,9 @@ public class CorrectAnswerVFX : MonoBehaviour
 
     public static CorrectAnswerVFX Spawn(Vector3 worldPosition, VisualEffectAsset asset, Transform numberToDestroy)
     {
+        // UI flash is WebGL-safe and ensures we always see feedback on itch.io.
+        SpawnScreenFlash();
+
         var cam = Camera.main;
         if (cam != null)
         {
@@ -67,6 +71,72 @@ public class CorrectAnswerVFX : MonoBehaviour
         fx.TryAttachVfxGraph();
         fx.StartCoroutine(fx.PlayRoutine(numberToDestroy));
         return fx;
+    }
+
+    static void SpawnScreenFlash()
+    {
+        // Fullscreen Canvas overlay.
+        var existing = GameObject.Find("CandyFlashCanvas");
+        if (existing != null)
+            GameObject.Destroy(existing);
+
+        var canvasGo = new GameObject("CandyFlashCanvas");
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 9999;
+
+        canvasGo.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+
+        var imgGo = new GameObject("Flash");
+        imgGo.transform.SetParent(canvasGo.transform, false);
+        var rt = imgGo.AddComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+
+        var img = imgGo.AddComponent<Image>();
+        img.raycastTarget = false;
+        img.color = new Color(1f, 0.25f, 0.7f, 0f);
+
+        // Drive alpha with a tiny helper coroutine.
+        canvasGo.AddComponent<FlashDriver>().Init(img);
+    }
+
+    class FlashDriver : MonoBehaviour
+    {
+        Image _img;
+        float _dur = 0.22f;
+
+        public void Init(Image img)
+        {
+            _img = img;
+        }
+
+        void Start()
+        {
+            StartCoroutine(Run());
+        }
+
+        System.Collections.IEnumerator Run()
+        {
+            float t = 0f;
+            while (t < _dur)
+            {
+                t += Time.deltaTime;
+                float p = Mathf.Clamp01(t / _dur);
+                // quick in, slow out
+                float a = (p < 0.35f) ? Mathf.Lerp(0f, 0.9f, p / 0.35f) : Mathf.Lerp(0.9f, 0f, (p - 0.35f) / 0.65f);
+                if (_img != null)
+                    _img.color = new Color(1f, 0.25f, 0.7f, a);
+                yield return null;
+            }
+
+            if (_img != null)
+                _img.color = new Color(1f, 0.25f, 0.7f, 0f);
+
+            Destroy(gameObject);
+        }
     }
 
     void BuildMeshPop()
