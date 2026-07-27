@@ -149,17 +149,17 @@ public class MathPracticeMenu : MonoBehaviour
         _ = tableLabel;
 
         var tableToggles = new Toggle[12];
-        int cols = 6;
-        float startX = -210f;
-        float stepX = 70f;
-        float row1Y = -110f;
-        float row2Y = -140f;
+        int cols = 2;              // 2 columns on the right side
+        float startX = 165f;      // shift to the right
+        float stepX = 85f;
+        float startY = -70f;      // top of the grid
+        float stepY = -30f;       // downwards per row
         for (int i = 0; i < 12; i++)
         {
-            int row = i / cols; // 0 or 1
-            int col = i % cols;
+            int row = i / cols; // 0..5
+            int col = i % cols; // 0..1
             float x = startX + col * stepX;
-            float y = row == 0 ? row1Y : row2Y;
+            float y = startY + row * stepY;
             int tableNumber = i + 1;
             // Default selection: practice tables 2..12 (leave 1 off). User can change.
             bool defaultOn = tableNumber != 1;
@@ -183,11 +183,11 @@ public class MathPracticeMenu : MonoBehaviour
         go.transform.SetParent(parent, false);
         var rt = go.GetComponent<RectTransform>();
         rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.sizeDelta = new Vector2(84f, 44f);
+        rt.sizeDelta = new Vector2(60f, 34f);
         rt.anchoredPosition = pos;
 
         var bg = go.GetComponent<Image>();
-        bg.color = new Color(0.08f, 0.75f, 1f, 0.95f);
+        bg.color = new Color(0.08f, 0.75f, 1f, 0.92f);
 
         // Use label as the graphic target so it’s visible even without separate checkmark sprites.
         var textGo = new GameObject("Label", typeof(RectTransform));
@@ -200,7 +200,7 @@ public class MathPracticeMenu : MonoBehaviour
 
         var tmp = textGo.AddComponent<TextMeshProUGUI>();
         tmp.text = label;
-        tmp.fontSize = 26f;
+        tmp.fontSize = 18f;
         tmp.color = Color.black;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.enableWordWrapping = false;
