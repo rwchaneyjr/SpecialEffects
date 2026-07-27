@@ -14,7 +14,7 @@ using TMPro;
 /// </summary>
 public static class MathGameSceneSetup
 {
-    const string VfxAssetPath = "Assets/New VFX.vfx";
+    const string VfxAssetPath = "Assets/Resources/New VFX.vfx";
     const string CorrectVfxPrefabPath = "Assets/Prefabs/CorrectAnswerVFX.prefab";
 
     [MenuItem("Window/Math Game/Setup Scene")]

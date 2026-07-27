@@ -17,6 +17,7 @@ public static class MathGameBootstrap
         if (existingManager != null)
         {
             EnsureMenuFor(existingManager);
+            EnsureVfxAsset(existingManager);
             return;
         }
 
@@ -33,23 +34,18 @@ public static class MathGameBootstrap
         var builderGo = new GameObject("NumberBuilder");
         var builder = builderGo.AddComponent<NumberVisualBuilder>();
 
-        CorrectAnswerVFX vfxTemplate = CreateVfxTemplate();
-        VisualEffectAsset vfxAsset = vfxTemplate != null
-            ? vfxTemplate.GetComponent<VisualEffect>()?.visualEffectAsset
-            : null;
+        VisualEffectAsset vfxAsset = ResolveVfxAsset();
 
+        // Keep scene demo VFX from covering gameplay; asset stays available via Resources.
         var sceneVfx = Object.FindObjectOfType<VisualEffect>();
-        if (sceneVfx != null && sceneVfx.visualEffectAsset != null)
-        {
-            vfxAsset = sceneVfx.visualEffectAsset;
+        if (sceneVfx != null)
             sceneVfx.gameObject.SetActive(false);
-        }
 
         var gmGo = new GameObject("GameManager");
         var manager = gmGo.AddComponent<MathGameManager>();
         gmGo.AddComponent<AnswerSfx>();
         gmGo.AddComponent<MouseAnswerPicker>();
-        manager.Configure(equationText, feedbackText, builder, spawnGo.transform, vfxTemplate, vfxAsset);
+        manager.Configure(equationText, feedbackText, builder, spawnGo.transform, null, vfxAsset);
 
         MathPracticeMenu.CreateRuntime(canvas, manager);
     }
@@ -68,6 +64,26 @@ public static class MathGameBootstrap
 
         if (canvas != null)
             MathPracticeMenu.CreateRuntime(canvas, manager);
+    }
+
+    static void EnsureVfxAsset(MathGameManager manager)
+    {
+        // Manager already configured in scene; still make sure Resources asset is resolvable.
+        ResolveVfxAsset();
+    }
+
+    static VisualEffectAsset ResolveVfxAsset()
+    {
+        var fromResources = Resources.Load<VisualEffectAsset>("New VFX");
+        if (fromResources != null)
+            return fromResources;
+
+        var sceneVfx = Object.FindObjectOfType<VisualEffect>();
+        if (sceneVfx != null && sceneVfx.visualEffectAsset != null)
+            return sceneVfx.visualEffectAsset;
+
+        Debug.LogWarning("Math Game: could not find 'New VFX' in Resources. Particle fallback will be used.");
+        return null;
     }
 
     static void EnsureCamera()
@@ -131,19 +147,5 @@ public static class MathGameBootstrap
         if (TMP_Settings.defaultFontAsset != null)
             tmp.font = TMP_Settings.defaultFontAsset;
         return tmp;
-    }
-
-    static CorrectAnswerVFX CreateVfxTemplate()
-    {
-        var go = new GameObject("CorrectAnswerVFX_Template");
-        go.SetActive(false);
-        Object.DontDestroyOnLoad(go);
-
-        var ve = go.AddComponent<VisualEffect>();
-        var sceneVfx = Object.FindObjectOfType<VisualEffect>();
-        if (sceneVfx != null && sceneVfx.visualEffectAsset != null)
-            ve.visualEffectAsset = sceneVfx.visualEffectAsset;
-
-        return go.AddComponent<CorrectAnswerVFX>();
     }
 }

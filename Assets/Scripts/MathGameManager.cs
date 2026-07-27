@@ -189,27 +189,15 @@ public class MathGameManager : MonoBehaviour
         Transform numberTransform = choice.transform;
         _activeAnswers.Remove(choice);
 
-        if (correctVfxPrefab != null)
-        {
-            var vfx = Instantiate(correctVfxPrefab, vfxPos, Quaternion.identity);
-            if (correctVfxAsset != null)
-            {
-                var ve = vfx.GetComponent<VisualEffect>();
-                if (ve != null && ve.visualEffectAsset == null)
-                    ve.visualEffectAsset = correctVfxAsset;
-            }
+        VisualEffectAsset asset = correctVfxAsset;
+        if (asset == null)
+            asset = Resources.Load<VisualEffectAsset>("New VFX");
 
-            vfx.PlayAt(vfxPos, numberTransform);
+        // Spawn a fresh active effect (build-safe). Falls back to particles on WebGL / failure.
+        CorrectAnswerVFX.Spawn(vfxPos, asset, numberTransform);
 
-            while (numberTransform != null)
-                yield return null;
-        }
-        else
-        {
-            yield return new WaitForSeconds(0.6f);
-            if (numberTransform != null)
-                Destroy(numberTransform.gameObject);
-        }
+        while (numberTransform != null)
+            yield return null;
 
         if (!_isPlaying)
             yield break;

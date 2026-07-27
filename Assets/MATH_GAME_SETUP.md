@@ -17,6 +17,15 @@ Click a correct answer to play your blue VFX (particles grow + glow intensifies)
 
 Sounds: a soft chime for correct answers, a short low tone for wrong answers (built-in; you can replace the clips on `AnswerSfx`).
 
+## Itch.io / builds — visual effect
+
+`New VFX` lives in `Assets/Resources/New VFX.vfx` so it is included in player builds.
+
+- **Windows / Mac / Linux builds:** Visual Effect Graph is used when supported.
+- **WebGL (common on itch.io):** VFX Graph often does not play; the game automatically uses a blue ParticleSystem orb instead so you still get a glow that grows on correct answers.
+
+Rebuild the itch.io upload after pulling this fix.
+
 ## What was added
 
 | Path | Role |
