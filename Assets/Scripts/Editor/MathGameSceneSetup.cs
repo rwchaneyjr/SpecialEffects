@@ -29,6 +29,8 @@ public static class MathGameSceneSetup
         var vfxPrefab = EnsureCorrectVfxPrefab();
         var gameManager = EnsureGameManager(equationText, feedbackText, numberBuilder, spawnArea, vfxPrefab);
         EnsureMousePicker(gameManager.gameObject);
+        if (gameManager.GetComponent<AnswerSfx>() == null)
+            gameManager.gameObject.AddComponent<AnswerSfx>();
 
         Selection.activeGameObject = gameManager.gameObject;
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
