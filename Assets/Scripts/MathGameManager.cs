@@ -176,6 +176,9 @@ public class MathGameManager : MonoBehaviour
         if (equationText != null)
             equationText.text = string.Empty;
 
+        if (feedbackText != null)
+            feedbackText.text = "Correct!";
+
         for (int i = _activeAnswers.Count - 1; i >= 0; i--)
         {
             var a = _activeAnswers[i];
