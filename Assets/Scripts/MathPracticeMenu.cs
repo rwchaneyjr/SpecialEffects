@@ -145,15 +145,15 @@ public class MathPracticeMenu : MonoBehaviour
         var div = CreateToggle(root.transform, "Divide", new Vector2(0f, -120f), false);
 
         // Times table picker (1..12). You can select which tables to practice for Multiply/Divide.
-        var tableLabel = CreateLabel(root.transform, "TablesLabel", "Tables (Multiply/Divide)", new Vector2(0f, -85f), 24f, new Color(1f, 0.9f, 0.7f));
+        var tableLabel = CreateLabel(root.transform, "TablesLabel", "Tables (Multiply/Divide)", new Vector2(185f, -85f), 24f, new Color(1f, 0.9f, 0.7f));
         _ = tableLabel;
 
         var tableToggles = new Toggle[12];
         int cols = 2;              // 2 columns on the right side
-        float startX = 165f;      // shift to the right
-        float stepX = 85f;
-        float startY = -70f;      // top of the grid
-        float stepY = -30f;       // downwards per row
+        float startX = 245f;      // push further right so it never overlaps
+        float stepX = 70f;
+        float startY = -65f;      // top of the grid
+        float stepY = -27f;       // step per row
         for (int i = 0; i < 12; i++)
         {
             int row = i / cols; // 0..5
@@ -187,7 +187,9 @@ public class MathPracticeMenu : MonoBehaviour
         rt.anchoredPosition = pos;
 
         var bg = go.GetComponent<Image>();
-        bg.color = new Color(0.08f, 0.75f, 1f, 0.92f);
+        Color onColor = new Color(0.08f, 0.75f, 1f, 0.92f);
+        Color offColor = new Color(0.12f, 0.12f, 0.12f, 0.65f);
+        bg.color = on ? onColor : offColor;
 
         // Use label as the graphic target so it’s visible even without separate checkmark sprites.
         var textGo = new GameObject("Label", typeof(RectTransform));
@@ -211,6 +213,10 @@ public class MathPracticeMenu : MonoBehaviour
         toggle.targetGraphic = bg;
         toggle.graphic = bg;
         toggle.isOn = on;
+
+        // Make it visually checkable (ON = cyan, OFF = dark).
+        toggle.onValueChanged.RemoveAllListeners();
+        toggle.onValueChanged.AddListener((v) => { bg.color = v ? onColor : offColor; });
         return toggle;
     }
 
