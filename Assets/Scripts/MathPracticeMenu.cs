@@ -145,7 +145,7 @@ public class MathPracticeMenu : MonoBehaviour
         var div = CreateToggle(root.transform, "Divide", new Vector2(0f, -120f), false);
 
         // Times table picker (1..12). You can select which tables to practice for Multiply/Divide.
-        var tableLabel = CreateLabel(root.transform, "Tables (Multiply/Divide)", new Vector2(0f, -85f), 24f, new Color(1f, 0.9f, 0.7f));
+        var tableLabel = CreateLabel(root.transform, "TablesLabel", "Tables (Multiply/Divide)", new Vector2(0f, -85f), 24f, new Color(1f, 0.9f, 0.7f));
         _ = tableLabel;
 
         var tableToggles = new Toggle[12];
