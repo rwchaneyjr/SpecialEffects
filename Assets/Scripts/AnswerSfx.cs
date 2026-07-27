@@ -12,7 +12,7 @@ public class AnswerSfx : MonoBehaviour
     [SerializeField] AudioClip wrongClip;
 
     [Header("Volumes")]
-    [SerializeField] [Range(0f, 1f)] float correctVolume = 0.7f;
+    [SerializeField] [Range(0f, 1f)] float correctVolume = 0.9f;
     [SerializeField] [Range(0f, 1f)] float wrongVolume = 0.55f;
 
     AudioSource _source;
@@ -73,27 +73,31 @@ public class AnswerSfx : MonoBehaviour
             _generatedWrong = BuildWrongBuzz();
     }
 
-    /// <summary>Soft rising two-note chime (C5 → E5).</summary>
+    /// <summary>Big rising blast (C4 → E5 → G5) for a more explosive correct hit.</summary>
     static AudioClip BuildCorrectChime()
     {
         const int sampleRate = 44100;
-        float[] freqs = { 523.25f, 659.25f }; // C5, E5
-        float noteLen = 0.16f;
-        float gap = 0.04f;
-        int totalSamples = Mathf.CeilToInt(sampleRate * (noteLen * 2f + gap + 0.05f));
+        float[] freqs = { 261.63f, 329.63f, 523.25f, 783.99f };
+        float noteLen = 0.11f;
+        float gap = 0.02f;
+        int totalSamples = Mathf.CeilToInt(sampleRate * (noteLen * freqs.Length + gap * (freqs.Length - 1) + 0.2f));
         var data = new float[totalSamples];
 
         int cursor = 0;
         for (int n = 0; n < freqs.Length; n++)
         {
             int noteSamples = Mathf.RoundToInt(sampleRate * noteLen);
-            WriteTone(data, cursor, noteSamples, sampleRate, freqs[n], 0.28f, true);
-            cursor += noteSamples;
+            float amp = 0.22f + n * 0.04f;
+            WriteTone(data, cursor, noteSamples, sampleRate, freqs[n], amp, true);
+            // Add a soft low thump under the first note
             if (n == 0)
+                WriteTone(data, cursor, noteSamples, sampleRate, 90f, 0.35f, true);
+            cursor += noteSamples;
+            if (n < freqs.Length - 1)
                 cursor += Mathf.RoundToInt(sampleRate * gap);
         }
 
-        var clip = AudioClip.Create("CorrectChime", totalSamples, 1, sampleRate, false);
+        var clip = AudioClip.Create("CorrectBlast", totalSamples, 1, sampleRate, false);
         clip.SetData(data, 0);
         return clip;
     }
