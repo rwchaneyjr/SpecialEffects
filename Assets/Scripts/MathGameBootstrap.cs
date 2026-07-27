@@ -6,6 +6,7 @@ using UnityEngine.VFX;
 
 /// <summary>
 /// Auto-wires the math clicker when you press Play, even if the scene was never set up.
+/// Shows a practice menu first (Addition / Subtraction / Times / Divide).
 /// </summary>
 public static class MathGameBootstrap
 {
@@ -15,12 +16,12 @@ public static class MathGameBootstrap
         if (Object.FindObjectOfType<MathGameManager>() != null)
             return;
 
-        Debug.Log("Math Game: auto-setup (no GameManager in scene). Press Play and click the answers.");
+        Debug.Log("Math Game: auto-setup. Choose practice mode, then Start.");
 
         EnsureCamera();
         EnsureEventSystem();
 
-        CreateUi(out TextMeshProUGUI equationText, out TextMeshProUGUI feedbackText);
+        Canvas canvas = CreateUi(out TextMeshProUGUI equationText, out TextMeshProUGUI feedbackText);
 
         var spawnGo = new GameObject("SpawnArea");
         spawnGo.transform.position = new Vector3(0f, 0.5f, 0f);
@@ -33,12 +34,10 @@ public static class MathGameBootstrap
             ? vfxTemplate.GetComponent<VisualEffect>()?.visualEffectAsset
             : null;
 
-        // Prefer asset from the scene Visual Effect object if present.
         var sceneVfx = Object.FindObjectOfType<VisualEffect>();
         if (sceneVfx != null && sceneVfx.visualEffectAsset != null)
         {
             vfxAsset = sceneVfx.visualEffectAsset;
-            // Hide the always-on scene demo effect so it doesn't cover the game.
             sceneVfx.gameObject.SetActive(false);
         }
 
@@ -46,6 +45,8 @@ public static class MathGameBootstrap
         var manager = gmGo.AddComponent<MathGameManager>();
         gmGo.AddComponent<MouseAnswerPicker>();
         manager.Configure(equationText, feedbackText, builder, spawnGo.transform, vfxTemplate, vfxAsset);
+
+        MathPracticeMenu.CreateRuntime(canvas, manager);
     }
 
     static void EnsureCamera()
@@ -75,7 +76,7 @@ public static class MathGameBootstrap
         es.AddComponent<StandaloneInputModule>();
     }
 
-    static void CreateUi(out TextMeshProUGUI equationText, out TextMeshProUGUI feedbackText)
+    static Canvas CreateUi(out TextMeshProUGUI equationText, out TextMeshProUGUI feedbackText)
     {
         var canvasGo = new GameObject("Canvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
         var canvas = canvasGo.GetComponent<Canvas>();
@@ -89,6 +90,7 @@ public static class MathGameBootstrap
         feedbackText = CreateTmp(canvasGo.transform, "FeedbackText", new Vector2(0f, -420f), 64f, new Color(1f, 0.85f, 0.4f));
         equationText.text = string.Empty;
         feedbackText.text = string.Empty;
+        return canvas;
     }
 
     static TextMeshProUGUI CreateTmp(Transform parent, string name, Vector2 pos, float size, Color color)

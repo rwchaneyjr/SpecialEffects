@@ -6,9 +6,11 @@ using UnityEngine.VFX;
 
 /// <summary>
 /// Math clicker loop:
-/// - Shows an equation in TMP (e.g. "2+7")
+/// - Start menu picks Addition / Subtraction / Times / Divide
+/// - Shows an equation in TMP
 /// - Spawns 1 correct answer + 2 decoys that float up
 /// - Mouse click: correct → VFX glow/grow then disappear; wrong → "Try again"
+/// - Esc opens the practice menu again
 /// </summary>
 public class MathGameManager : MonoBehaviour
 {
@@ -33,16 +35,20 @@ public class MathGameManager : MonoBehaviour
     [Header("Problem Difficulty")]
     [SerializeField] int minOperand = 1;
     [SerializeField] int maxOperand = 9;
-    [SerializeField] bool allowSubtraction = true;
+    [SerializeField] int timesTableMax = 12;
 
     [Header("Feedback")]
     [SerializeField] string tryAgainMessage = "Try again";
     [SerializeField] float tryAgainDisplaySeconds = 1.2f;
 
     readonly List<AnswerChoice> _activeAnswers = new List<AnswerChoice>();
+    readonly List<MathOp> _enabledOps = new List<MathOp> { MathOp.Add };
     int _correctValue;
     bool _roundLocked;
+    bool _isPlaying;
     Coroutine _feedbackRoutine;
+
+    public bool IsPlaying => _isPlaying;
 
     /// <summary>
     /// Used by MathGameBootstrap / editor setup to wire references at runtime.
@@ -67,12 +73,52 @@ public class MathGameManager : MonoBehaviour
     {
         if (feedbackText != null)
             feedbackText.text = string.Empty;
+        if (equationText != null)
+            equationText.text = string.Empty;
 
+        // Wait for the practice menu unless something already started play.
+        if (!_isPlaying)
+            PauseToMenu();
+    }
+
+    public void BeginPractice(List<MathOp> ops)
+    {
+        _enabledOps.Clear();
+        if (ops != null)
+        {
+            for (int i = 0; i < ops.Count; i++)
+            {
+                if (!_enabledOps.Contains(ops[i]))
+                    _enabledOps.Add(ops[i]);
+            }
+        }
+
+        if (_enabledOps.Count == 0)
+            _enabledOps.Add(MathOp.Add);
+
+        _isPlaying = true;
         StartNewRound();
+    }
+
+    public void PauseToMenu()
+    {
+        _isPlaying = false;
+        _roundLocked = true;
+        StopAllCoroutines();
+        _feedbackRoutine = null;
+        ClearAnswers();
+
+        if (equationText != null)
+            equationText.text = string.Empty;
+        if (feedbackText != null)
+            feedbackText.text = string.Empty;
     }
 
     public void StartNewRound()
     {
+        if (!_isPlaying)
+            return;
+
         StopAllCoroutines();
         _feedbackRoutine = null;
         ClearAnswers();
@@ -81,17 +127,17 @@ public class MathGameManager : MonoBehaviour
         if (feedbackText != null)
             feedbackText.text = string.Empty;
 
-        GenerateProblem(out int a, out int b, out char op, out _correctValue);
+        GenerateProblem(out int a, out int b, out string opSymbol, out _correctValue);
 
         if (equationText != null)
-            equationText.text = $"{a} {op} {b}";
+            equationText.text = $"{a} {opSymbol} {b}";
 
         SpawnAnswers(_correctValue);
     }
 
     public void OnAnswerSelected(AnswerChoice choice)
     {
-        if (_roundLocked || choice == null)
+        if (!_isPlaying || _roundLocked || choice == null)
             return;
 
         if (choice.IsCorrect)
@@ -111,7 +157,6 @@ public class MathGameManager : MonoBehaviour
         if (equationText != null)
             equationText.text = string.Empty;
 
-        // Remove decoys immediately so only the correct number + VFX remain.
         for (int i = _activeAnswers.Count - 1; i >= 0; i--)
         {
             var a = _activeAnswers[i];
@@ -137,20 +182,23 @@ public class MathGameManager : MonoBehaviour
 
             vfx.PlayAt(vfxPos, numberTransform);
 
-            // Wait until the VFX script destroys the number, then a short beat before the next round.
             while (numberTransform != null)
                 yield return null;
         }
         else
         {
-            // No VFX assigned — still disappear the number after a short beat.
             yield return new WaitForSeconds(0.6f);
             if (numberTransform != null)
                 Destroy(numberTransform.gameObject);
         }
 
+        if (!_isPlaying)
+            yield break;
+
         yield return new WaitForSeconds(nextRoundDelay);
-        StartNewRound();
+
+        if (_isPlaying)
+            StartNewRound();
     }
 
     void ShowTryAgain()
@@ -207,29 +255,47 @@ public class MathGameManager : MonoBehaviour
         }
     }
 
-    void GenerateProblem(out int a, out int b, out char op, out int result)
+    void GenerateProblem(out int a, out int b, out string opSymbol, out int result)
     {
-        a = Random.Range(minOperand, maxOperand + 1);
-        b = Random.Range(minOperand, maxOperand + 1);
+        MathOp op = _enabledOps[Random.Range(0, _enabledOps.Count)];
 
-        bool subtract = allowSubtraction && Random.value < 0.45f;
-        if (subtract)
+        switch (op)
         {
-            // Keep non-negative results for digit prefabs.
-            if (b > a)
-            {
-                int tmp = a;
-                a = b;
-                b = tmp;
-            }
+            case MathOp.Subtract:
+                a = Random.Range(minOperand, maxOperand + 1);
+                b = Random.Range(minOperand, maxOperand + 1);
+                if (b > a)
+                {
+                    int tmp = a;
+                    a = b;
+                    b = tmp;
+                }
+                opSymbol = "−";
+                result = a - b;
+                break;
 
-            op = '-';
-            result = a - b;
-        }
-        else
-        {
-            op = '+';
-            result = a + b;
+            case MathOp.Multiply:
+                a = Random.Range(1, timesTableMax + 1);
+                b = Random.Range(1, timesTableMax + 1);
+                opSymbol = "×";
+                result = a * b;
+                break;
+
+            case MathOp.Divide:
+                // Build whole-number division: a ÷ b = result
+                b = Random.Range(1, timesTableMax + 1);
+                result = Random.Range(1, timesTableMax + 1);
+                a = b * result;
+                opSymbol = "÷";
+                break;
+
+            case MathOp.Add:
+            default:
+                a = Random.Range(minOperand, maxOperand + 1);
+                b = Random.Range(minOperand, maxOperand + 1);
+                opSymbol = "+";
+                result = a + b;
+                break;
         }
     }
 
@@ -237,7 +303,7 @@ public class MathGameManager : MonoBehaviour
     {
         for (int attempt = 0; attempt < 40; attempt++)
         {
-            int offset = Random.Range(1, 5);
+            int offset = Random.Range(1, 6);
             if (Random.value < 0.5f)
                 offset = -offset;
 
@@ -251,7 +317,6 @@ public class MathGameManager : MonoBehaviour
             return decoy;
         }
 
-        // Guaranteed fallback.
         int fallback = correct == 0 ? 1 : correct - 1;
         if (alsoAvoid.HasValue && fallback == alsoAvoid.Value)
             fallback = correct + 1;
