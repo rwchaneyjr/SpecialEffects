@@ -11,7 +11,7 @@ Click a correct answer to play your blue VFX (particles grow + glow intensifies)
 | `Assets/Scripts/MouseAnswerPicker.cs` | Mouse raycast → answer |
 | `Assets/Scripts/NumberVisualBuilder.cs` | Builds numbers from digit prefabs **or** TMP |
 | `Assets/Scripts/CorrectAnswerVFX.cs` | Grows VFX `size`, brightens `New Color`, then destroys |
-| `Assets/Scripts/Editor/MathGameSceneSetup.cs` | Menu: **Tools → Math Game → Setup Scene** |
+| `Assets/Scripts/Editor/MathGameSceneSetup.cs` | Menu: **Window → Math Game → Setup Scene** |
 
 Your VFX Graph (`Assets/New VFX.vfx`) already exposes:
 
@@ -23,7 +23,7 @@ Your VFX Graph (`Assets/New VFX.vfx`) already exposes:
 1. Open this project in **Unity 2022.3**.
 2. If prompted, import **TMP Essentials** (Window → TextMeshPro → Import TMP Essential Resources).
 3. Open `Assets/Scenes/SampleScene`.
-4. Menu: **Tools → Math Game → Setup Scene**.
+4. Menu: **Window → Math Game → Setup Scene** (also under **Tools** if that menu appears).
 5. Press **Play**. Answers appear as TMP numbers until you assign digit prefabs.
 6. Click with the mouse:
    - Correct → blue VFX grows/glows → number + VFX vanish → next equation
@@ -44,7 +44,7 @@ Each answer needs a collider (the scripts add a `BoxCollider` on the answer root
 
 ## Correct-answer VFX prefab
 
-**Tools → Math Game → Create Correct Answer VFX Prefab** creates:
+**Window → Math Game → Create Correct Answer VFX Prefab** creates:
 
 `Assets/Prefabs/CorrectAnswerVFX.prefab`
 

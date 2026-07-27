@@ -17,6 +17,7 @@ public static class MathGameSceneSetup
     const string VfxAssetPath = "Assets/New VFX.vfx";
     const string CorrectVfxPrefabPath = "Assets/Prefabs/CorrectAnswerVFX.prefab";
 
+    [MenuItem("Window/Math Game/Setup Scene")]
     [MenuItem("Tools/Math Game/Setup Scene")]
     public static void SetupScene()
     {
@@ -38,6 +39,7 @@ public static class MathGameSceneSetup
             "3) Drop your exported number prefabs into Assets/Prefabs when ready.");
     }
 
+    [MenuItem("Window/Math Game/Create Correct Answer VFX Prefab")]
     [MenuItem("Tools/Math Game/Create Correct Answer VFX Prefab")]
     public static void CreateVfxPrefabOnly()
     {
