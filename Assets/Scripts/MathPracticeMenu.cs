@@ -180,11 +180,12 @@ public class MathPracticeMenu : MonoBehaviour
         var go = new GameObject(label + "MiniToggle", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Toggle));
         go.transform.SetParent(parent, false);
         var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
         rt.sizeDelta = new Vector2(60f, 34f);
         rt.anchoredPosition = pos;
 
         var bg = go.GetComponent<Image>();
-        bg.color = new Color(0.18f, 0.14f, 0.16f, 1f);
+        bg.color = new Color(0.22f, 0.18f, 0.20f, 0.95f);
 
         // Use label as the graphic target so it’s visible even without separate checkmark sprites.
         var textGo = new GameObject("Label", typeof(RectTransform));
