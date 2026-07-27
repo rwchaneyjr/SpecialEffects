@@ -112,6 +112,8 @@ public class MathGameManager : MonoBehaviour
             _enabledOps.Add(MathOp.Add);
 
         _isPlaying = true;
+        if (feedbackText != null)
+            feedbackText.text = "PRACTICING";
         StartNewRound();
     }
 
@@ -138,9 +140,6 @@ public class MathGameManager : MonoBehaviour
         _feedbackRoutine = null;
         ClearAnswers();
         _roundLocked = false;
-
-        if (feedbackText != null)
-            feedbackText.text = string.Empty;
 
         GenerateProblem(out int a, out int b, out string opSymbol, out _correctValue);
 
