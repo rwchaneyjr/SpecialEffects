@@ -13,8 +13,12 @@ public static class MathGameBootstrap
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void AutoStart()
     {
-        if (Object.FindObjectOfType<MathGameManager>() != null)
+        var existingManager = Object.FindObjectOfType<MathGameManager>();
+        if (existingManager != null)
+        {
+            EnsureMenuFor(existingManager);
             return;
+        }
 
         Debug.Log("Math Game: auto-setup. Choose practice mode, then Start.");
 
@@ -47,6 +51,22 @@ public static class MathGameBootstrap
         manager.Configure(equationText, feedbackText, builder, spawnGo.transform, vfxTemplate, vfxAsset);
 
         MathPracticeMenu.CreateRuntime(canvas, manager);
+    }
+
+    static void EnsureMenuFor(MathGameManager manager)
+    {
+        if (Object.FindObjectOfType<MathPracticeMenu>() != null)
+            return;
+
+        var canvas = Object.FindObjectOfType<Canvas>();
+        if (canvas == null)
+        {
+            CreateUi(out _, out _);
+            canvas = Object.FindObjectOfType<Canvas>();
+        }
+
+        if (canvas != null)
+            MathPracticeMenu.CreateRuntime(canvas, manager);
     }
 
     static void EnsureCamera()

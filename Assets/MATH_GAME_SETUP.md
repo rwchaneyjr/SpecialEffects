@@ -2,83 +2,47 @@
 
 Click a correct answer to play your blue VFX (particles grow + glow intensifies), then the number and effect disappear. Wrong answers show **Try again**.
 
+## Play
+
+1. Pull branch `cursor/math-clicker-game-b9bd`
+2. Press **Play**
+3. On the start menu, pick what to practice:
+   - **Addition**
+   - **Subtraction**
+   - **Times Tables**
+   - **Divide**
+4. Click **Start Practice**
+5. Click answers with the mouse
+6. Press **Esc** anytime to pause and change practice modes
+
 ## What was added
 
 | Path | Role |
 |------|------|
 | `Assets/Scripts/MathGameManager.cs` | Equation, spawn 1 correct + 2 decoys, round flow |
+| `Assets/Scripts/MathPracticeMenu.cs` | Start/pause menu for operation choice |
+| `Assets/Scripts/MathGameBootstrap.cs` | Auto-wires the game when you press Play |
 | `Assets/Scripts/AnswerChoice.cs` | Float-up motion + click target |
 | `Assets/Scripts/MouseAnswerPicker.cs` | Mouse raycast → answer |
 | `Assets/Scripts/NumberVisualBuilder.cs` | Builds numbers from digit prefabs **or** TMP |
 | `Assets/Scripts/CorrectAnswerVFX.cs` | Grows VFX `size`, brightens `New Color`, then destroys |
 | `Assets/Scripts/Editor/MathGameSceneSetup.cs` | Menu: **Window → Math Game → Setup Scene** |
 
-Your VFX Graph (`Assets/New VFX.vfx`) already exposes:
-
-- `size` — particle size (grown on correct answer)
-- `New Color` — HDR color used as glow intensity
-
 ## Quick start (in Unity)
 
 1. Open this project in **Unity 2022.3**.
-2. If prompted, import **TMP Essentials** (Window → TextMeshPro → Import TMP Essential Resources).
+2. If prompted, import **TMP Essentials**.
 3. Open `Assets/Scenes/SampleScene`.
-4. Menu: **Window → Math Game → Setup Scene** (also under **Tools** if that menu appears).
-5. Press **Play**. Answers appear as TMP numbers until you assign digit prefabs.
-6. Click with the mouse:
-   - Correct → blue VFX grows/glows → number + VFX vanish → next equation
-   - Wrong → “Try again”
+4. Press **Play** — practice menu appears automatically.
+5. Choose operations → **Start Practice** → click answers with the mouse.
 
-## Plug in your number prefabs (from MathShooter2)
+## Number prefabs (optional)
 
-1. Export / copy digit prefabs **0–9** into `Assets/Prefabs/` (or any folder under Assets).
-2. Select **NumberBuilder** in the Hierarchy.
-3. On `NumberVisualBuilder`, fill **Digit Prefabs** array:
-   - Element 0 → prefab `0`
-   - Element 1 → prefab `1`
-   - …
-   - Element 9 → prefab `9`
-4. Tweak **Digit Spacing** / **Digit Scale** if the 3D models are large or small.
+Assign digit prefabs **0–9** on `NumberBuilder`. Until then, answers use TMP text.
 
-Each answer needs a collider (the scripts add a `BoxCollider` on the answer root). Keep physics enabled so mouse raycasts hit them.
+## Controls
 
-## Correct-answer VFX prefab
-
-**Window → Math Game → Create Correct Answer VFX Prefab** creates:
-
-`Assets/Prefabs/CorrectAnswerVFX.prefab`
-
-It uses `New VFX.vfx` and `CorrectAnswerVFX` to:
-
-1. Play the effect on the correct number  
-2. Lerp `size` upward  
-3. Multiply HDR `New Color` for a stronger glow  
-4. Destroy the number and the VFX instance  
-
-Tune on the prefab / component:
-
-- Start Size / End Size  
-- Start Glow / End Glow  
-- Grow Duration / Hold After Grow  
-
-## Optional: Particle System instead of VFX Graph
-
-If you use the yellow **confetti** Particle System from MathShooter2, put it on the same GameObject as `CorrectAnswerVFX` (or assign **Fallback Particles**). When no `VisualEffect` is present, the script grows `startSizeMultiplier` instead.
-
-## Controls & flow
-
-- Equation: TMP on the Canvas (`EquationText`)
-- Answers: 3 world objects float up from below `SpawnArea`
-- Input: left mouse button + physics raycast from Main Camera
-- Wrong: feedback TMP shows “Try again” briefly; answers stay so you can click again
-- Correct: decoys removed; VFX plays; then next round
-
-## Inspector checklist on GameManager
-
-- Equation Text / Feedback Text  
-- Number Builder  
-- Spawn Area  
-- Correct Vfx Prefab  
-- Correct Vfx Asset → `New VFX`  
-
-You can send the number + VFX export anytime; once digit prefabs are assigned, Play Mode uses your 3D numbers automatically.
+- Start menu: Addition / Subtraction / Times / Divide
+- Wrong answer: **Try again**
+- Correct: VFX grows + glows, then next round
+- **Esc**: pause and reopen the practice menu
