@@ -15,6 +15,8 @@ Click a correct answer to play your blue VFX (particles grow + glow intensifies)
 5. Click answers with the mouse
 6. Press **Esc** anytime to pause and change practice modes
 
+Sounds: a soft chime for correct answers, a short low tone for wrong answers (built-in; you can replace the clips on `AnswerSfx`).
+
 ## What was added
 
 | Path | Role |

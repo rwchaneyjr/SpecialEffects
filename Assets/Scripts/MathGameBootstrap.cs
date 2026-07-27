@@ -47,6 +47,7 @@ public static class MathGameBootstrap
 
         var gmGo = new GameObject("GameManager");
         var manager = gmGo.AddComponent<MathGameManager>();
+        gmGo.AddComponent<AnswerSfx>();
         gmGo.AddComponent<MouseAnswerPicker>();
         manager.Configure(equationText, feedbackText, builder, spawnGo.transform, vfxTemplate, vfxAsset);
 

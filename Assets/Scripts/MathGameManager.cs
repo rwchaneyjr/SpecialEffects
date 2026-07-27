@@ -40,6 +40,7 @@ public class MathGameManager : MonoBehaviour
     [Header("Feedback")]
     [SerializeField] string tryAgainMessage = "Try again";
     [SerializeField] float tryAgainDisplaySeconds = 1.2f;
+    [SerializeField] AnswerSfx answerSfx;
 
     readonly List<AnswerChoice> _activeAnswers = new List<AnswerChoice>();
     readonly List<MathOp> _enabledOps = new List<MathOp> { MathOp.Add };
@@ -67,6 +68,20 @@ public class MathGameManager : MonoBehaviour
         spawnArea = spawn;
         correctVfxPrefab = vfxPrefab;
         correctVfxAsset = vfxAsset;
+        EnsureSfx();
+    }
+
+    void Awake()
+    {
+        EnsureSfx();
+    }
+
+    void EnsureSfx()
+    {
+        if (answerSfx == null)
+            answerSfx = GetComponent<AnswerSfx>();
+        if (answerSfx == null)
+            answerSfx = gameObject.AddComponent<AnswerSfx>();
     }
 
     void Start()
@@ -144,10 +159,14 @@ public class MathGameManager : MonoBehaviour
         {
             _roundLocked = true;
             SetAllInteractable(false);
+            if (answerSfx != null)
+                answerSfx.PlayCorrect();
             StartCoroutine(HandleCorrect(choice));
         }
         else
         {
+            if (answerSfx != null)
+                answerSfx.PlayWrong();
             ShowTryAgain();
         }
     }
