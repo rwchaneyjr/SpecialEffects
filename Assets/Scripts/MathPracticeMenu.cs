@@ -145,15 +145,15 @@ public class MathPracticeMenu : MonoBehaviour
         var div = CreateToggle(root.transform, "Divide", new Vector2(0f, -120f), false);
 
         // Times table picker (1..12). You can select which tables to practice for Multiply/Divide.
-        var tableLabel = CreateLabel(root.transform, "Tables (Multiply/Divide)", new Vector2(0f, -175f), 24f, new Color(1f, 0.9f, 0.7f));
+        var tableLabel = CreateLabel(root.transform, "Tables (Multiply/Divide)", new Vector2(0f, -145f), 24f, new Color(1f, 0.9f, 0.7f));
         _ = tableLabel;
 
         var tableToggles = new Toggle[12];
         int cols = 6;
         float startX = -210f;
         float stepX = 70f;
-        float row1Y = -205f;
-        float row2Y = -245f;
+        float row1Y = -175f;
+        float row2Y = -215f;
         for (int i = 0; i < 12; i++)
         {
             int row = i / cols; // 0 or 1
@@ -166,7 +166,7 @@ public class MathPracticeMenu : MonoBehaviour
             tableToggles[i] = CreateMiniToggle(root.transform, tableNumber.ToString(), new Vector2(x, y), defaultOn);
         }
 
-        var start = CreateButton(root.transform, "Start Practice", new Vector2(0f, -310f));
+        var start = CreateButton(root.transform, "Start Practice", new Vector2(0f, -255f));
 
         // Keep title/hint references; title unused beyond creation.
         _ = title;
