@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\Users\\rober\\SpecialEffects\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{CA24F2CF-9F47-1C58-B354-FE1B98A842F3}|Assembly-CSharp.csproj|c:\\users\\rober\\specialeffects\\assets\\scripts\\mathgamemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CA24F2CF-9F47-1C58-B354-FE1B98A842F3}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\mathgamemanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\rober\\SpecialEffects\\Library\\PackageCache\\com.unity.visualeffectgraph@14.0.12\\Editor\\Core\\VFXLibrary.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Library\\PackageCache\\com.unity.visualeffectgraph@14.0.12\\Editor\\Core\\VFXLibrary.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
@@ -19,6 +23,23 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "MathGameManager.cs",
+              "DocumentMoniker": "C:\\Users\\rober\\SpecialEffects\\Assets\\Scripts\\MathGameManager.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\MathGameManager.cs",
+              "ToolTip": "C:\\Users\\rober\\SpecialEffects\\Assets\\Scripts\\MathGameManager.cs",
+              "RelativeToolTip": "Assets\\Scripts\\MathGameManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-08-04T20:17:48.452Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "VFXLibrary.cs",
               "DocumentMoniker": "C:\\Users\\rober\\SpecialEffects\\Library\\PackageCache\\com.unity.visualeffectgraph@14.0.12\\Editor\\Core\\VFXLibrary.cs",
               "RelativeDocumentMoniker": "Library\\PackageCache\\com.unity.visualeffectgraph@14.0.12\\Editor\\Core\\VFXLibrary.cs",
@@ -28,10 +49,6 @@
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-07-26T19:28:23.542Z",
               "EditorCaption": ""
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
             }
           ]
         }
