@@ -203,17 +203,21 @@ public static class MathGameSceneSetup
         instanceGo.name = "CorrectAnswerVFX_Instance";
 
         // Scene-template instance should reuse (deactivate instead of destroy).
-        var so = new SerializedObject(instanceGo.GetComponent<CorrectAnswerVFX>());
-        var prop = so.FindProperty("destroyOnFinish");
-        if (prop != null)
-            prop.boolValue = false;
-        so.ApplyModifiedPropertiesWithoutUndo();
+        var instanceComp = instanceGo.GetComponent<CorrectAnswerVFX>();
+        if (instanceComp != null)
+        {
+            var so = new SerializedObject(instanceComp);
+            var prop = so.FindProperty("destroyOnFinish");
+            if (prop != null)
+                prop.boolValue = false;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
 
         // Keep it hidden until first correct click.
         instanceGo.SetActive(true);
         instanceGo.SetActive(false);
 
-        return instanceGo.GetComponent<CorrectAnswerVFX>();
+        return instanceComp;
     }
 
     static MathGameManager EnsureGameManager(
@@ -227,16 +231,9 @@ public static class MathGameSceneSetup
         GameObject go = existing != null ? existing.gameObject : new GameObject("GameManager");
         var manager = existing != null ? existing : go.AddComponent<MathGameManager>();
 
-        var so = new SerializedObject(manager);
-        so.FindProperty("equationText").objectReferenceValue = equationText;
-        so.FindProperty("feedbackText").objectReferenceValue = feedbackText;
-        so.FindProperty("numberBuilder").objectReferenceValue = numberBuilder;
-        so.FindProperty("spawnArea").objectReferenceValue = spawnArea;
-        so.FindProperty("correctVfxPrefab").objectReferenceValue = vfxPrefab;
-
         var vfxAsset = AssetDatabase.LoadAssetAtPath<VisualEffectAsset>(VfxAssetPath);
-        so.FindProperty("correctVfxAsset").objectReferenceValue = vfxAsset;
-        so.ApplyModifiedPropertiesWithoutUndo();
+        // Use the public Configure() to avoid brittle SerializedObject property wiring.
+        manager.Configure(equationText, feedbackText, numberBuilder, spawnArea, vfxPrefab, vfxAsset);
         return manager;
     }
 
