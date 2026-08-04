@@ -218,20 +218,9 @@ public class MathGameManager : MonoBehaviour
                 asset = ve.visualEffectAsset;
         }
 
-        if (correctVfxPrefab != null)
-        {
-            var vfxGo = Instantiate(correctVfxPrefab, vfxPos, Quaternion.identity);
-
-            // Ensure the VisualEffect uses the provided asset (if needed).
-            if (asset != null)
-            {
-                var ve = vfxGo.GetComponent<UnityEngine.VFX.VisualEffect>();
-                if (ve != null && ve.visualEffectAsset == null)
-                    ve.visualEffectAsset = asset;
-            }
-
-            vfxGo.PlayAt(vfxPos, numberTransform);
-        }
+        // Candy-crush-like goo pop effect (mesh-first, WebGL-safe).
+        // Spawn() builds the effect and handles destroying the clicked number.
+        CorrectAnswerVFX.Spawn(vfxPos, asset, numberTransform);
 
         while (numberTransform != null)
             yield return null;

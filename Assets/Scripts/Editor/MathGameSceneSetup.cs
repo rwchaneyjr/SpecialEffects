@@ -172,19 +172,10 @@ public static class MathGameSceneSetup
         if (!AssetDatabase.IsValidFolder("Assets/Prefabs"))
             AssetDatabase.CreateFolder("Assets", "Prefabs");
 
+        // Candy-crush-like goo pop is mesh-first (no required VisualEffect Graph bindings).
+        // So the prefab just needs the CorrectAnswerVFX component.
         var temp = new GameObject("CorrectAnswerVFX");
-        var ve = temp.AddComponent<VisualEffect>();
-        var asset = AssetDatabase.LoadAssetAtPath<VisualEffectAsset>(VfxAssetPath);
-        if (asset != null)
-            ve.visualEffectAsset = asset;
-
         var controller = temp.AddComponent<CorrectAnswerVFX>();
-
-        // Wire serialized refs via SerializedObject so private fields stick on the prefab.
-        var so = new SerializedObject(controller);
-        so.FindProperty("visualEffect").objectReferenceValue = ve;
-        so.FindProperty("vfxAsset").objectReferenceValue = asset;
-        so.ApplyModifiedPropertiesWithoutUndo();
 
         var prefabRoot = PrefabUtility.SaveAsPrefabAsset(temp, CorrectVfxPrefabPath);
         Object.DestroyImmediate(temp);
