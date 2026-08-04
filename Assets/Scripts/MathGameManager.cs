@@ -211,8 +211,12 @@ public class MathGameManager : MonoBehaviour
         _activeAnswers.Remove(choice);
 
         VisualEffectAsset asset = correctVfxAsset;
-        if (asset == null)
-            asset = Resources.Load<VisualEffectAsset>("New VFX");
+        if (asset == null && correctVfxPrefab != null)
+        {
+            var ve = correctVfxPrefab.GetComponent<UnityEngine.VFX.VisualEffect>();
+            if (ve != null)
+                asset = ve.visualEffectAsset;
+        }
 
         // Spawn a fresh active effect (build-safe). Falls back to particles on WebGL / failure.
         CorrectAnswerVFX.Spawn(vfxPos, asset, numberTransform);

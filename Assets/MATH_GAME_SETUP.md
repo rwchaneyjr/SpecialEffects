@@ -5,7 +5,7 @@ Click a correct answer to play your blue VFX (particles grow + glow intensifies)
 ## Play
 
 1. Pull branch `cursor/math-clicker-game-b9bd`
-2. Open `Assets/Scenes/MathGameScene`
+2. Open `Assets/Scenes/Math`
 3. In Unity, run **Tools → Math Game → Setup Scene** (this wires the menu + game objects into the scene)
 4. Press **Play**
 5. On the start menu, pick what to practice:
@@ -44,7 +44,7 @@ Rebuild and re-upload to itch after pulling.
 
 1. Open this project in **Unity 2022.3**.
 2. If prompted, import **TMP Essentials**.
-3. Open `Assets/Scenes/MathGameScene`.
+3. Open `Assets/Scenes/Math`.
 4. Run **Tools → Math Game → Setup Scene**.
 5. Press **Play**.
 6. Choose operations → **Start Practice** → click answers with the mouse.

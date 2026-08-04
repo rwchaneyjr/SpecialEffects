@@ -1,260 +1,133 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.VFX;
-using UnityEngine.UI;
 
 /// <summary>
-/// Candy-crush-like goo pop (mesh-only, WebGL-safe).
-/// Fast blob expansion + colorful droplets, then quick disappear.
-/// No ParticleSystem / no VFX Graph dependency for visibility.
+/// Plays the correct-answer Visual Effect Graph: grows particle size and intensifies glow,
+/// then destroys the VFX and the linked number.
+/// Exposed VFX parameters used: "size", "New Color" (optional: "SpawnRate", "trailRate").
 /// </summary>
 public class CorrectAnswerVFX : MonoBehaviour
 {
-    const string ResourcesVfxName = "New VFX";
+    const string SizeParam = "size";
+    const string ColorParam = "New Color";
 
-    [Header("Timing")]
-    [SerializeField] float popDuration = 0.7f;
-    [SerializeField] float holdAfter = 0.08f;
-    [SerializeField] float destroyNumberAt = 0.18f;
+    [Header("VFX")]
+    [SerializeField] VisualEffect visualEffect;
+    [SerializeField] VisualEffectAsset vfxAsset;
 
-    [Header("Size")]
-    [SerializeField] float coreStart = 0.25f;
-    [SerializeField] float corePeak = 5.2f;
-    [SerializeField] float coreEnd = 0.01f;
+    [Header("Growth & Glow")]
+    [SerializeField] float startSize = 1f;
+    [SerializeField] float endSize = 3.5f;
+    [SerializeField] float startGlow = 1f;
+    [SerializeField] float endGlow = 4f;
+    [SerializeField] float growDuration = 1.1f;
+    [SerializeField] float holdAfterGrow = 0.35f;
 
-    [Header("Candy Colors (change here)" )]
-    [SerializeField] Color blobBase = new Color(1f, 0.25f, 0.7f, 1f);    // pink
-    [SerializeField] Color blobHot = new Color(1.2f, 0.6f, 1.8f, 1f);     // glow
-    [SerializeField] Color dropletBase = new Color(0.35f, 0.9f, 1f, 1f);  // cyan
-    [SerializeField] Color dropletHot = new Color(0.2f, 1.8f, 2.8f, 1f);
+    [Header("Fallback (Particle System)")]
+    [SerializeField] ParticleSystem fallbackParticles;
 
-    [Header("Bits")]
-    [SerializeField] int dropletCount = 20;
-    [SerializeField] float dropletRadius = 0.35f;
-    [SerializeField] float dropletTravel = 4.1f;
-    [SerializeField] float cameraShake = 0.15f;
+    Color _baseColor = new Color(0.27f, 0.70f, 3.7f, 0f);
+    bool _hasColorParam;
+    bool _hasSizeParam;
 
-    Transform _core;
-    readonly List<Transform> _droplets = new List<Transform>();
-    readonly List<Vector3> _dirs = new List<Vector3>();
-    readonly List<float> _baseSizes = new List<float>();
-
-    Material _blobMat;
-    Material _dropletMat;
-
-    Vector3 _camBasePos;
-    bool _shaking;
-
-    public static CorrectAnswerVFX Spawn(Vector3 worldPosition, VisualEffectAsset asset, Transform numberToDestroy)
+    void Awake()
     {
-        // UI flash is WebGL-safe and ensures we always see feedback on itch.io.
-        SpawnScreenFlash();
-
-        var cam = Camera.main;
-        if (cam != null)
-        {
-            Vector3 toCam = (cam.transform.position - worldPosition).normalized;
-            worldPosition += toCam * 0.9f;
-        }
-
-        var go = new GameObject("CorrectAnswerGooPop");
-        go.transform.position = worldPosition;
-
-        var fx = go.AddComponent<CorrectAnswerVFX>();
-        fx.BuildMeshPop();
-        fx.StartCoroutine(fx.PlayRoutine(numberToDestroy));
-        return fx;
+        if (visualEffect == null)
+            visualEffect = GetComponent<VisualEffect>();
+        if (fallbackParticles == null)
+            fallbackParticles = GetComponent<ParticleSystem>();
     }
 
-    static void SpawnScreenFlash()
+    /// <summary>
+    /// Spawns/plays the effect at <paramref name="worldPosition"/>, grows size + glow, then destroys
+    /// the effect object and <paramref name="numberToDestroy"/>.
+    /// </summary>
+    public void PlayAt(Vector3 worldPosition, Transform numberToDestroy)
     {
-        // Fullscreen Canvas overlay.
-        var existing = GameObject.Find("CandyFlashCanvas");
-        if (existing != null)
-            GameObject.Destroy(existing);
-
-        var canvasGo = new GameObject("CandyFlashCanvas");
-        var canvas = canvasGo.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 9999;
-
-        canvasGo.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-
-        var imgGo = new GameObject("Flash");
-        imgGo.transform.SetParent(canvasGo.transform, false);
-        var rt = imgGo.AddComponent<RectTransform>();
-        rt.anchorMin = Vector2.zero;
-        rt.anchorMax = Vector2.one;
-        rt.offsetMin = Vector2.zero;
-        rt.offsetMax = Vector2.zero;
-
-        var img = imgGo.AddComponent<Image>();
-        img.raycastTarget = false;
-        img.color = new Color(1f, 0.25f, 0.7f, 0f);
-
-        // Drive alpha with a tiny helper coroutine.
-        canvasGo.AddComponent<FlashDriver>().Init(img);
-    }
-
-    class FlashDriver : MonoBehaviour
-    {
-        Image _img;
-        float _dur = 0.22f;
-
-        public void Init(Image img)
-        {
-            _img = img;
-        }
-
-        void Start()
-        {
-            StartCoroutine(Run());
-        }
-
-        System.Collections.IEnumerator Run()
-        {
-            float t = 0f;
-            while (t < _dur)
-            {
-                t += Time.deltaTime;
-                float p = Mathf.Clamp01(t / _dur);
-                // quick in, slow out
-                float a = (p < 0.35f) ? Mathf.Lerp(0f, 0.9f, p / 0.35f) : Mathf.Lerp(0.9f, 0f, (p - 0.35f) / 0.65f);
-                if (_img != null)
-                    _img.color = new Color(1f, 0.25f, 0.7f, a);
-                yield return null;
-            }
-
-            if (_img != null)
-                _img.color = new Color(1f, 0.25f, 0.7f, 0f);
-
-            Destroy(gameObject);
-        }
-    }
-
-    void BuildMeshPop()
-    {
-        _blobMat = CreateEmissiveMaterial(blobBase, blobHot);
-        _dropletMat = CreateEmissiveMaterial(dropletBase, dropletHot);
-
-        _core = GameObject.CreatePrimitive(PrimitiveType.Sphere).transform;
-        _core.name = "CoreBlob";
-        _core.SetParent(transform, false);
-        _core.localPosition = Vector3.zero;
-        _core.localScale = Vector3.one * coreStart;
-        Destroy(_core.GetComponent<Collider>());
-        _core.GetComponent<Renderer>().sharedMaterial = _blobMat;
-
-        for (int i = 0; i < dropletCount; i++)
-        {
-            float ang = (i / (float)dropletCount) * Mathf.PI * 2f;
-            Vector3 dir = new Vector3(Mathf.Cos(ang), Mathf.Sin(ang), Random.Range(-0.35f, 0.35f)).normalized;
-            float size = Random.Range(0.05f, 0.18f);
-
-            var d = GameObject.CreatePrimitive(PrimitiveType.Sphere).transform;
-            d.name = "Droplet";
-            d.SetParent(transform, false);
-            d.localPosition = dir * dropletRadius;
-            d.localScale = Vector3.one * size;
-            Destroy(d.GetComponent<Collider>());
-            d.GetComponent<Renderer>().sharedMaterial = _dropletMat;
-
-            _droplets.Add(d);
-            _dirs.Add(dir);
-            _baseSizes.Add(size);
-        }
+        transform.position = worldPosition;
+        gameObject.SetActive(true);
+        StartCoroutine(PlayRoutine(numberToDestroy));
     }
 
     IEnumerator PlayRoutine(Transform numberToDestroy)
     {
-        yield return null;
+        PrepareVisualEffect();
 
-        var cam = Camera.main;
-        if (cam != null && cameraShake > 0f)
-        {
-            _camBasePos = cam.transform.localPosition;
-            _shaking = true;
-        }
-
-        bool numberGone = false;
         float elapsed = 0f;
-        while (elapsed < popDuration)
+        while (elapsed < growDuration)
         {
             elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / popDuration);
-
-            // Blob wobble: expands, then squashes and vanishes.
-            float expandT = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / 0.55f));
-            float scale = Mathf.Lerp(coreStart, corePeak, expandT);
-
-            float wobble = Mathf.Sin(t * Mathf.PI * 2f);
-            float wobbleX = 1f + 0.18f * wobble;
-            float wobbleY = 1f - 0.10f * wobble;
-            float wobbleZ = 1f + 0.05f * Mathf.Cos(t * Mathf.PI * 2f);
-
-            if (t < 0.55f)
-            {
-                _core.localScale = new Vector3(scale * wobbleX, scale * wobbleY, scale * wobbleZ);
-            }
-            else
-            {
-                float shrinkT = Mathf.InverseLerp(0.55f, 1f, t);
-                float s = Mathf.Lerp(corePeak, coreEnd, Mathf.SmoothStep(0f, 1f, shrinkT));
-                _core.localScale = new Vector3(s * wobbleX, s * wobbleY, s * wobbleZ);
-            }
-
-            // Droplets shoot out fast, then shrink.
-            float outwardT = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, 0.7f, t));
-            float inwardT = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.7f, 1f, t));
-
-            for (int i = 0; i < _droplets.Count; i++)
-            {
-                if (_droplets[i] == null) continue;
-                float dist = dropletTravel * outwardT;
-                _droplets[i].localPosition = _dirs[i] * (dropletRadius + dist);
-
-                float s = _baseSizes[i] * Mathf.Lerp(1.25f, 0.03f, inwardT);
-                _droplets[i].localScale = Vector3.one * s;
-            }
-
-            if (_shaking && cam != null)
-            {
-                float shakeAmt = cameraShake * Mathf.Pow(1f - t, 2f);
-                cam.transform.localPosition = _camBasePos + Random.insideUnitSphere * shakeAmt;
-            }
-
-            if (!numberGone && elapsed >= destroyNumberAt && numberToDestroy != null)
-            {
-                Destroy(numberToDestroy.gameObject);
-                numberGone = true;
-            }
-
+            float t = Mathf.Clamp01(elapsed / growDuration);
+            float eased = EaseOutQuad(t);
+            ApplyProgress(eased);
             yield return null;
         }
 
-        if (_shaking && cam != null)
-            cam.transform.localPosition = _camBasePos;
+        ApplyProgress(1f);
+        yield return new WaitForSeconds(holdAfterGrow);
 
-        if (!numberGone && numberToDestroy != null)
+        if (numberToDestroy != null)
             Destroy(numberToDestroy.gameObject);
 
-        yield return new WaitForSeconds(holdAfter);
         Destroy(gameObject);
     }
 
-    static Material CreateEmissiveMaterial(Color baseColor, Color hotEmission)
+    void PrepareVisualEffect()
     {
-        Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard") ?? Shader.Find("Sprites/Default");
-        var mat = new Material(shader != null ? shader : Shader.Find("Hidden/InternalErrorShader"));
+        if (visualEffect != null)
+        {
+            if (vfxAsset != null && visualEffect.visualEffectAsset == null)
+                visualEffect.visualEffectAsset = vfxAsset;
 
-        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", baseColor);
-        if (mat.HasProperty("_Color")) mat.SetColor("_Color", baseColor);
+            _hasSizeParam = visualEffect.HasFloat(SizeParam);
+            _hasColorParam = visualEffect.HasVector4(ColorParam);
 
-        mat.EnableKeyword("_EMISSION");
-        if (mat.HasProperty("_EmissionColor")) mat.SetColor("_EmissionColor", hotEmission);
+            if (_hasColorParam)
+                _baseColor = visualEffect.GetVector4(ColorParam);
 
-        mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
-        return mat;
+            if (_hasSizeParam)
+                visualEffect.SetFloat(SizeParam, startSize);
+            if (_hasColorParam)
+                visualEffect.SetVector4(ColorParam, ScaleHdr(_baseColor, startGlow));
+
+            visualEffect.Play();
+            return;
+        }
+
+        if (fallbackParticles != null)
+        {
+            var main = fallbackParticles.main;
+            main.startSizeMultiplier = startSize;
+            fallbackParticles.Play(true);
+        }
     }
+
+    void ApplyProgress(float t)
+    {
+        float size = Mathf.Lerp(startSize, endSize, t);
+        float glow = Mathf.Lerp(startGlow, endGlow, t);
+
+        if (visualEffect != null)
+        {
+            if (_hasSizeParam)
+                visualEffect.SetFloat(SizeParam, size);
+            if (_hasColorParam)
+                visualEffect.SetVector4(ColorParam, ScaleHdr(_baseColor, glow));
+            return;
+        }
+
+        if (fallbackParticles != null)
+        {
+            var main = fallbackParticles.main;
+            main.startSizeMultiplier = size;
+        }
+    }
+
+    static Color ScaleHdr(Color c, float multiplier)
+    {
+        return new Color(c.r * multiplier, c.g * multiplier, c.b * multiplier, c.a);
+    }
+
+    static float EaseOutQuad(float x) => 1f - (1f - x) * (1f - x);
 }
