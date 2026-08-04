@@ -218,8 +218,20 @@ public class MathGameManager : MonoBehaviour
                 asset = ve.visualEffectAsset;
         }
 
-        // Spawn a fresh active effect (build-safe). Falls back to particles on WebGL / failure.
-        CorrectAnswerVFX.Spawn(vfxPos, asset, numberTransform);
+        if (correctVfxPrefab != null)
+        {
+            var vfxGo = Instantiate(correctVfxPrefab, vfxPos, Quaternion.identity);
+
+            // Ensure the VisualEffect uses the provided asset (if needed).
+            if (asset != null)
+            {
+                var ve = vfxGo.GetComponent<UnityEngine.VFX.VisualEffect>();
+                if (ve != null && ve.visualEffectAsset == null)
+                    ve.visualEffectAsset = asset;
+            }
+
+            vfxGo.PlayAt(vfxPos, numberTransform);
+        }
 
         while (numberTransform != null)
             yield return null;
