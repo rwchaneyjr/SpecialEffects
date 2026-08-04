@@ -209,14 +209,36 @@ public class MathPracticeMenu : MonoBehaviour
         if (TMP_Settings.defaultFontAsset != null)
             tmp.font = TMP_Settings.defaultFontAsset;
 
+        // Visual checkmark so the toggle is clearly ON/OFF.
+        var checkGo = new GameObject("Check", typeof(RectTransform));
+        checkGo.transform.SetParent(go.transform, false);
+        var checkRt = checkGo.GetComponent<RectTransform>();
+        checkRt.anchorMin = Vector2.zero;
+        checkRt.anchorMax = Vector2.one;
+        checkRt.offsetMin = Vector2.zero;
+        checkRt.offsetMax = Vector2.zero;
+
+        var checkTmp = checkGo.AddComponent<TextMeshProUGUI>();
+        checkTmp.text = "✓";
+        checkTmp.fontSize = 20f;
+        checkTmp.color = on ? Color.white : new Color(1f, 1f, 1f, 0f);
+        checkTmp.alignment = TextAlignmentOptions.Center;
+        checkTmp.enableWordWrapping = false;
+        if (TMP_Settings.defaultFontAsset != null)
+            checkTmp.font = TMP_Settings.defaultFontAsset;
+
         var toggle = go.GetComponent<Toggle>();
         toggle.targetGraphic = bg;
         toggle.graphic = bg;
         toggle.isOn = on;
 
-        // Make it visually checkable (ON = cyan, OFF = dark).
+        // Make it visually checkable (ON = cyan + check, OFF = dark + no check).
         toggle.onValueChanged.RemoveAllListeners();
-        toggle.onValueChanged.AddListener((v) => { bg.color = v ? onColor : offColor; });
+        toggle.onValueChanged.AddListener((v) =>
+        {
+            bg.color = v ? onColor : offColor;
+            checkTmp.color = v ? Color.white : new Color(1f, 1f, 1f, 0f);
+        });
         return toggle;
     }
 
