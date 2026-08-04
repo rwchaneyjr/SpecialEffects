@@ -12,6 +12,10 @@ public class CorrectAnswerVFX : MonoBehaviour
 {
     const string ResourcesVfxName = "New VFX";
 
+    [Header("Lifecycle")]
+    [Tooltip("If true, this instance destroys itself after playing. If false, it deactivates instead (scene-reusable template).")]
+    [SerializeField] bool destroyOnFinish = true;
+
     [Header("Timing")]
     [SerializeField] float popDuration = 0.7f;
     [SerializeField] float holdAfter = 0.08f;
@@ -49,8 +53,34 @@ public class CorrectAnswerVFX : MonoBehaviour
     VisualEffect _vfx;
     VisualEffectAsset _vfxAsset;
 
+    Coroutine _playRoutine;
+
     public static CorrectAnswerVFX Spawn(Vector3 worldPosition, VisualEffectAsset asset, Transform numberToDestroy)
     {
+        var go = new GameObject("CorrectAnswerGooPop");
+
+        var fx = go.AddComponent<CorrectAnswerVFX>();
+        fx.destroyOnFinish = true;
+        fx.PlayAt(worldPosition, numberToDestroy, asset);
+        return fx;
+    }
+
+    void Awake()
+    {
+        // For a scene-placed instance, build once so it can be reused.
+        EnsureBuilt();
+    }
+
+    public void PlayAt(Vector3 worldPosition, Transform numberToDestroy, VisualEffectAsset assetOverride)
+    {
+        // Make sure we can play even if this template instance was inactive.
+        gameObject.SetActive(true);
+
+        EnsureBuilt();
+        ConfigureVfxAsset(assetOverride);
+        TryAttachVfxGraph();
+
+        // Match the old Spawn() behavior: offset slightly toward the camera.
         var cam = Camera.main;
         if (cam != null)
         {
@@ -58,19 +88,25 @@ public class CorrectAnswerVFX : MonoBehaviour
             worldPosition += toCam * 0.9f;
         }
 
-        var go = new GameObject("CorrectAnswerGooPop");
-        go.transform.position = worldPosition;
+        transform.position = worldPosition;
 
-        var fx = go.AddComponent<CorrectAnswerVFX>();
-        fx._vfxAsset = asset != null ? asset : Resources.Load<VisualEffectAsset>(ResourcesVfxName);
-        fx.BuildMeshPop();
-        fx.TryAttachVfxGraph();
-        fx.StartCoroutine(fx.PlayRoutine(numberToDestroy));
-        return fx;
+        if (_playRoutine != null)
+            StopCoroutine(_playRoutine);
+
+        _playRoutine = StartCoroutine(PlayRoutine(numberToDestroy));
+    }
+
+    void ConfigureVfxAsset(VisualEffectAsset assetOverride)
+    {
+        _vfxAsset = assetOverride != null ? assetOverride : Resources.Load<VisualEffectAsset>(ResourcesVfxName);
     }
 
     void BuildMeshPop()
     {
+        // Prevent duplicate primitive creation if PlayAt is called multiple times.
+        if (_core != null)
+            return;
+
         _blobMat = CreateEmissiveMaterial(blobBase, blobHot);
         _dropletMat = CreateEmissiveMaterial(dropletBase, dropletHot);
 
@@ -108,9 +144,18 @@ public class CorrectAnswerVFX : MonoBehaviour
             return;
         if (_vfxAsset == null)
             return;
+        if (_vfx != null)
+            return;
 
         _vfx = gameObject.AddComponent<VisualEffect>();
         _vfx.visualEffectAsset = _vfxAsset;
+    }
+
+    void EnsureBuilt()
+    {
+        // _core is only created in BuildMeshPop().
+        if (_core == null)
+            BuildMeshPop();
     }
 
     IEnumerator PlayRoutine(Transform numberToDestroy)
@@ -200,7 +245,11 @@ public class CorrectAnswerVFX : MonoBehaviour
             Destroy(numberToDestroy.gameObject);
 
         yield return new WaitForSeconds(holdAfter);
-        Destroy(gameObject);
+
+        if (destroyOnFinish)
+            Destroy(gameObject);
+        else
+            gameObject.SetActive(false);
     }
 
     static Material CreateEmissiveMaterial(Color baseColor, Color hotEmission)

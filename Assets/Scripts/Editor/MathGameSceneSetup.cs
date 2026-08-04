@@ -27,7 +27,8 @@ public static class MathGameSceneSetup
         var spawnArea = EnsureSpawnArea();
         var numberBuilder = EnsureNumberBuilder();
         var vfxPrefab = EnsureCorrectVfxPrefab();
-        var gameManager = EnsureGameManager(equationText, feedbackText, numberBuilder, spawnArea, vfxPrefab);
+        var vfxInstance = EnsureCorrectVfxSceneInstance(vfxPrefab);
+        var gameManager = EnsureGameManager(equationText, feedbackText, numberBuilder, spawnArea, vfxInstance);
         EnsureMousePicker(gameManager.gameObject);
         if (gameManager.GetComponent<AnswerSfx>() == null)
             gameManager.gameObject.AddComponent<AnswerSfx>();
@@ -182,6 +183,37 @@ public static class MathGameSceneSetup
         AssetDatabase.SaveAssets();
 
         return prefabRoot.GetComponent<CorrectAnswerVFX>();
+    }
+
+    static CorrectAnswerVFX EnsureCorrectVfxSceneInstance(CorrectAnswerVFX prefab)
+    {
+        if (prefab == null)
+            return null;
+
+        var existing = GameObject.Find("CorrectAnswerVFX_Instance");
+        if (existing != null)
+        {
+            var c = existing.GetComponent<CorrectAnswerVFX>();
+            if (c != null)
+                return c;
+        }
+
+        // Instantiate into the scene so it can be saved in the hierarchy.
+        var instanceGo = (GameObject)Object.Instantiate(prefab.gameObject);
+        instanceGo.name = "CorrectAnswerVFX_Instance";
+
+        // Scene-template instance should reuse (deactivate instead of destroy).
+        var so = new SerializedObject(instanceGo.GetComponent<CorrectAnswerVFX>());
+        var prop = so.FindProperty("destroyOnFinish");
+        if (prop != null)
+            prop.boolValue = false;
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        // Keep it hidden until first correct click.
+        instanceGo.SetActive(true);
+        instanceGo.SetActive(false);
+
+        return instanceGo.GetComponent<CorrectAnswerVFX>();
     }
 
     static MathGameManager EnsureGameManager(

@@ -219,8 +219,11 @@ public class MathGameManager : MonoBehaviour
         }
 
         // Candy-crush-like goo pop effect (mesh-first, WebGL-safe).
-        // Spawn() builds the effect and handles destroying the clicked number.
-        CorrectAnswerVFX.Spawn(vfxPos, asset, numberTransform);
+        // Prefer a scene-placed reusable instance (so it exists in the hierarchy).
+        if (correctVfxPrefab != null)
+            correctVfxPrefab.PlayAt(vfxPos, numberTransform, asset);
+        else
+            CorrectAnswerVFX.Spawn(vfxPos, asset, numberTransform);
 
         while (numberTransform != null)
             yield return null;
