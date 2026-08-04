@@ -32,6 +32,11 @@ public static class MathGameSceneSetup
         if (gameManager.GetComponent<AnswerSfx>() == null)
             gameManager.gameObject.AddComponent<AnswerSfx>();
 
+        DisableAllSceneVfx();
+
+        // Build the practice menu as real scene objects (editor-time), not at runtime.
+        MathPracticeMenu.CreateRuntime(canvas, gameManager);
+
         Selection.activeGameObject = gameManager.gameObject;
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
         Debug.Log(
@@ -216,6 +221,17 @@ public static class MathGameSceneSetup
     {
         if (host.GetComponent<MouseAnswerPicker>() == null)
             host.AddComponent<MouseAnswerPicker>();
+    }
+
+    static void DisableAllSceneVfx()
+    {
+        // Some scenes contain a demo VisualEffect Graph object. Disable it so it doesn't run in the math game scene.
+        var effects = Object.FindObjectsOfType<VisualEffect>(true);
+        for (int i = 0; i < effects.Length; i++)
+        {
+            if (effects[i] != null && effects[i].gameObject != null)
+                effects[i].gameObject.SetActive(false);
+        }
     }
 }
 #endif

@@ -5,15 +5,17 @@ Click a correct answer to play your blue VFX (particles grow + glow intensifies)
 ## Play
 
 1. Pull branch `cursor/math-clicker-game-b9bd`
-2. Press **Play**
-3. On the start menu, pick what to practice:
+2. Open `Assets/Scenes/MathGameScene`
+3. In Unity, run **Tools → Math Game → Setup Scene** (this wires the menu + game objects into the scene)
+4. Press **Play**
+5. On the start menu, pick what to practice:
    - **Addition**
    - **Subtraction**
    - **Times Tables**
    - **Divide**
-4. Click **Start Practice**
-5. Click answers with the mouse
-6. Press **Esc** anytime to pause and change practice modes
+6. Click **Start Practice**
+7. Click answers with the mouse
+8. Press **Esc** anytime to pause and change practice modes
 
 Sounds: a soft chime for correct answers, a short low tone for wrong answers (built-in; you can replace the clips on `AnswerSfx`).
 
@@ -32,7 +34,6 @@ Rebuild and re-upload to itch after pulling.
 |------|------|
 | `Assets/Scripts/MathGameManager.cs` | Equation, spawn 1 correct + 2 decoys, round flow |
 | `Assets/Scripts/MathPracticeMenu.cs` | Start/pause menu for operation choice |
-| `Assets/Scripts/MathGameBootstrap.cs` | Auto-wires the game when you press Play |
 | `Assets/Scripts/AnswerChoice.cs` | Float-up motion + click target |
 | `Assets/Scripts/MouseAnswerPicker.cs` | Mouse raycast → answer |
 | `Assets/Scripts/NumberVisualBuilder.cs` | Builds numbers from digit prefabs **or** TMP |
@@ -43,9 +44,13 @@ Rebuild and re-upload to itch after pulling.
 
 1. Open this project in **Unity 2022.3**.
 2. If prompted, import **TMP Essentials**.
-3. Open `Assets/Scenes/SampleScene`.
-4. Press **Play** — practice menu appears automatically.
-5. Choose operations → **Start Practice** → click answers with the mouse.
+3. Open `Assets/Scenes/MathGameScene`.
+4. Run **Tools → Math Game → Setup Scene**.
+5. Press **Play**.
+6. Choose operations → **Start Practice** → click answers with the mouse.
+
+### Visual Effect-only scene
+Open `Assets/Scenes/VisualEffectScene` to view the VisualEffect Graph demo by itself.
 
 ## Number prefabs (optional)
 
